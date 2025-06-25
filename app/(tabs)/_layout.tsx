@@ -1,43 +1,74 @@
 import { Tabs } from 'expo-router';
-import React from 'react';
+import { DollarSign, MessageCircle, Store, User } from 'lucide-react-native';
 import { Platform } from 'react-native';
 
-import { HapticTab } from '@/components/HapticTab';
-import { IconSymbol } from '@/components/ui/IconSymbol';
-import TabBarBackground from '@/components/ui/TabBarBackground';
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
-
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+         
         headerShown: false,
-        tabBarButton: HapticTab,
-        tabBarBackground: TabBarBackground,
-        tabBarStyle: Platform.select({
-          ios: {
-            // Use a transparent background on iOS to show the blur effect
-            position: 'absolute',
-          },
-          default: {},
-        }),
+        tabBarActiveTintColor: '#8B5CF6',
+        tabBarInactiveTintColor: '#64748B',
+        headerPressOpacity:0.2,
+        tabBarStyle: {
+          backgroundColor: '#FFFFFF',
+          paddingBottom: Platform.OS === 'ios' ? 20 : 5,
+          paddingTop: 5,
+          height: Platform.OS === 'ios' ? 85 : 80,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.05,
+          shadowRadius: 8,
+          borderRadius:20,  
+          elevation: 5,
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          borderRadius:20,
+          fontFamily: 'Inter-Medium',
+          marginBottom: Platform.OS === 'ios' ? 0 : 5,
+        },
+        tabBarItemStyle: {
+          borderRadius: 20,
+          marginHorizontal: 4,
+          marginBottom: Platform.OS === 'ios' ? 10 : 0,
+        },
       }}>
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          title: 'Chat',
+          tabBarIcon: ({ size, color }) => (
+            <MessageCircle size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="marketplace"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: 'Marketplace',
+          tabBarIcon: ({ size, color }) => (
+            <Store size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="pricing"
+        options={{
+          title: 'Pricing',
+          tabBarIcon: ({ size, color }) => (
+            <DollarSign size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ size, color }) => (
+            <User size={size} color={color} />
+          ),
         }}
       />
     </Tabs>
