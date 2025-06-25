@@ -36,7 +36,8 @@ export default function TabLayout() {
           <Pressable {...props} android_ripple={null} style={props.style} />
         ),
       }}>
-      <Tabs.Screen
+        
+     <Tabs.Screen
         name="index"
         options={{
           title: 'Chat',
@@ -57,7 +58,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="add"
         options={{
-          title: 'add',
+          title: 'add',  
           tabBarIcon: ({ size, color }) => (
             <Plus size={size} color={color} />
           ),
@@ -66,7 +67,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="pricing"
         options={{
-          title: 'Pricing',
+          title: 'Pricing',  
           tabBarIcon: ({ size, color }) => (
             <DollarSign size={size} color={color} />
           ),
