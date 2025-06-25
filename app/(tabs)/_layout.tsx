@@ -1,27 +1,25 @@
 import { Tabs } from 'expo-router';
-import { DollarSign, MessageCircle, Store, User } from 'lucide-react-native';
-import { Platform } from 'react-native';
+import { DollarSign, MessageCircle, Plus, Store, User } from 'lucide-react-native';
+import { Platform, Pressable } from 'react-native';
 
 export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-         
         headerShown: false,
         tabBarActiveTintColor: '#8B5CF6',
         tabBarInactiveTintColor: '#64748B',
         headerPressOpacity:0.2,
         tabBarStyle: {
           backgroundColor: '#FFFFFF',
-          paddingBottom: Platform.OS === 'ios' ? 20 : 5,
-          paddingTop: 5,
-          height: Platform.OS === 'ios' ? 85 : 80,
+          paddingBottom: Platform.OS === 'ios' ? 20 : 1,
+          height: Platform.OS === 'ios' ? 80 : 72,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: -2 },
           shadowOpacity: 0.05,
           shadowRadius: 8,
           borderRadius:20,  
-          elevation: 5,
+          
         },
         tabBarLabelStyle: {
           fontSize: 12,
@@ -34,6 +32,9 @@ export default function TabLayout() {
           marginHorizontal: 4,
           marginBottom: Platform.OS === 'ios' ? 10 : 0,
         },
+        tabBarButton: ({ ref, ...props }) => (
+          <Pressable {...props} android_ripple={null} style={props.style} />
+        ),
       }}>
       <Tabs.Screen
         name="index"
@@ -50,6 +51,15 @@ export default function TabLayout() {
           title: 'Marketplace',
           tabBarIcon: ({ size, color }) => (
             <Store size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="add"
+        options={{
+          title: 'add',
+          tabBarIcon: ({ size, color }) => (
+            <Plus size={size} color={color} />
           ),
         }}
       />

@@ -2,12 +2,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Check, Crown, Star, Zap } from 'lucide-react-native';
 import React, { useEffect, useRef } from 'react';
 import {
-  Dimensions,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Dimensions,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 

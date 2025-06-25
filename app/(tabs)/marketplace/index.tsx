@@ -3,13 +3,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Filter, Plus, Search, TrendingUp } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -131,7 +131,7 @@ export default function MarketplaceScreen() {
     <LinearGradient colors={['#F5F7FF', '#E8ECFF']} style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
-          <Text style={styles.title}>Prompt Marketplace</Text>
+          
           <Text style={styles.subtitle}>Discover and share AI prompts</Text>
         </View>
 
@@ -274,16 +274,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingVertical: 10,
     alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
-  },
-  title: {
-    color: '#1E293B',
-    fontSize: 24,
-    fontFamily: 'Inter-Bold',
+
   },
   subtitle: {
     color: '#64748B',
@@ -295,7 +288,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: 20,
     marginBottom: 16,
-    gap: 12,
   },
   searchBox: {
     flex: 1,
@@ -304,7 +296,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     paddingHorizontal: 16,
-    paddingVertical: 12,
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
@@ -325,9 +316,9 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
   },
   categoriesContainer: {
-    maxHeight: 50,
+    maxHeight: 35,
     paddingHorizontal: 20,
-    marginBottom: 16,
+    marginBottom: 10,
   },
   categoriesContent: {
     paddingRight: 20,

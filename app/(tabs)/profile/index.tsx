@@ -1,24 +1,24 @@
 import {
-  Bookmark,
-  Crown,
-  Edit,
-  HelpCircle,
-  LogOut,
-  PlusCircle,
-  Settings,
-  Shield,
-  Star,
-  User,
-  Zap
+    Bookmark,
+    Crown,
+    Edit,
+    HelpCircle,
+    LogOut,
+    PlusCircle,
+    Settings,
+    Shield,
+    Star,
+    User,
+    Zap
 } from 'lucide-react-native';
 import React from 'react';
 import {
-  Alert,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    Alert,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
