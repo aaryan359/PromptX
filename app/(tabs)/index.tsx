@@ -1,9 +1,11 @@
 import ChatMessage from '@/components/ChatMessage';
+import CustomHeader from '@/components/CustomHeader';
 import SystemPromptButton from '@/components/SystemPromptButton';
 import VoiceInput from '@/components/VoiceInput';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Code, FileText, Palette, PenTool, Send, Sparkles } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
+
 import {
   KeyboardAvoidingView,
   Modal,
@@ -173,13 +175,15 @@ const handlePromptSelect = (prompt: typeof systemPrompts[0]) => {
    
     setShowAuthModal(false);
   };
+ 
 
 
   return (
     <LinearGradient colors={['#F5F7FF', '#E8ECFF']} style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
 
-
+        
+       <CustomHeader />
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
