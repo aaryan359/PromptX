@@ -8,17 +8,40 @@ interface SystemPromptButtonProps {
   icon: LucideIcon;
   onPress: () => void;
   isSelected: boolean;
+  disabled?: boolean;
 }
 
-export default function SystemPromptButton({ title, icon: Icon, onPress, isSelected }: SystemPromptButtonProps) {
+export default function SystemPromptButton({
+  title,
+  icon: Icon,
+  onPress,
+  isSelected,
+  disabled = false,
+
+}: SystemPromptButtonProps) {
   return (
-    <TouchableOpacity onPress={onPress} style={styles.container}>
+    <TouchableOpacity 
+      onPress={onPress} 
+      style={styles.container}
+      disabled={disabled}
+      activeOpacity={0.7}
+    >
       <LinearGradient
-        colors={isSelected ? ['#8B5CF6', '#8B5CF6'] : ['#A1A1AA', '#A1A1AA']}
-        style={styles.button}
+        colors={
+          disabled ? ['#E5E7EB', '#D1D5DB'] :
+          isSelected ? ['#8B5CF6', '#7C3AED'] : 
+          ['#A1A1AA', '#9CA3AF']
+        }
+        style={[styles.button]}
       >
-        <Icon size={20} color="#FFFFFF" />
-        <Text style={styles.text}>{title}</Text>
+        
+        <Text style={[
+          styles.text,
+          disabled && styles.disabledText,
+          isSelected && styles.selectedText
+        ]}>
+          {title}
+        </Text>
       </LinearGradient>
     </TouchableOpacity>
   );
@@ -32,14 +55,45 @@ const styles = StyleSheet.create({
   button: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 12,
+    minWidth: 80,
+  },
+  iconContainer: {
+    position: 'relative',
+    marginRight: 4,
+  },
+  premiumBadge: {
+    position: 'absolute',
+    right: -8,
+    top: -8,
+    backgroundColor: '#F59E0B',
+    borderRadius: 4,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+  },
+  premiumBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 8,
+    fontWeight: 'bold',
+  },
+  premiumBorder: {
+    borderWidth: 1,
+    borderColor: 'rgba(139, 92, 246, 0.3)',
   },
   text: {
     color: '#FFFFFF',
     fontSize: 12,
     fontFamily: 'Inter-Medium',
-    marginLeft: 4
+  },
+  selectedText: {
+    fontWeight: 'bold',
+  },
+  disabledButton: {
+    opacity: 0.7,
+  },
+  disabledText: {
+    color: '#9CA3AF',
   },
 });

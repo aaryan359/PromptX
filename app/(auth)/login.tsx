@@ -1,9 +1,12 @@
-import { useSignIn } from "@clerk/clerk-expo";
+import { googleLogin } from "@/utils/GoogleSiginIn";
+
 import { Ionicons } from "@expo/vector-icons";
-import * as Linking from 'expo-linking';
 import { useRouter } from "expo-router";
 import * as WebBrowser from 'expo-web-browser';
 import { useState } from "react";
+
+
+
 
 import {
 	Alert,
@@ -21,7 +24,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 WebBrowser.maybeCompleteAuthSession();
 
 export default function AuthScreen() {
-	const { signIn, setActive } = useSignIn();
+	
 	const router = useRouter();
 
 	const [loading, setLoading] = useState(false);
@@ -31,34 +34,14 @@ export default function AuthScreen() {
 	const handleGoogleSignIn = async () => {
 		try {
 			setLoading(true);
-			if (!signIn) {
-				Alert.alert("Error", "Sign in is not available.");
-				return;
-			}
-
-			console.log("Starting Google Sign-In");
 			
-			// Create the sign-in with Google OAuth strategy
-			const result = await signIn.authenticateWithRedirect({
-				strategy: "oauth_google",
-				redirectUrl: "https://star-seal-72.accounts.dev/sign-in",
-				// Remove redirectUrlComplete or set it to the same as redirectUrl
-				redirectUrlComplete: "/",
-			});
 
-			console.log("Google Sign-In result:", result);
+			 console.log("Starting Google Sign-In");
+			 const {idToken, user} = await googleLogin();
+             console.log(' id toke and user is', idToken, user);
 
-			// If the sign-in is complete, set the active session
-			if (result.status === "complete") {
-				await setActive({ session: result.createdSessionId });
-				Alert.alert("Success", "Logged in successfully");
-				router.push("/(tabs)");
-			} else {
-				// Handle any additional verification steps if needed
-				console.log("Sign-in status:", result.status);
-			}
 
-		} catch (err) {
+			}catch (err:any) {
 			console.error("Google Sign-In Error:", err);
 			if (err.errors && err.errors.length > 0) {
 				Alert.alert("Error", err.errors[0].message);
@@ -68,57 +51,10 @@ export default function AuthScreen() {
 		} finally {
 			setLoading(false);
 		}
+	 
 	};
 
-	// Alternative method using web browser flow (if the above doesn't work)
-	const handleGoogleSignInWeb = async () => {
-		try {
-			setLoading(true);
-			if (!signIn) {
-				Alert.alert("Error", "Sign in is not available.");
-				return;
-			}
-
-			console.log("Starting Google Sign-In with Web Flow");
-			
-			// Use the external verification redirect URL from the signIn object
-			const { firstFactorVerification } = signIn;
-			
-			if (firstFactorVerification?.externalVerificationRedirectURL) {
-				// Open the Google OAuth URL in a web browser
-				const result = await WebBrowser.openAuthSessionAsync(
-					firstFactorVerification.externalVerificationRedirectURL,
-					Linking.createURL("/")
-				);
-
-				if (result.type === 'success' && result.url) {
-					// Parse the callback URL to get the verification data
-					const url = new URL(result.url);
-					const code = url.searchParams.get('code');
-					
-					if (code) {
-						// Complete the sign-in process
-						const signInResult = await signIn.attemptFirstFactor({
-							strategy: "oauth_google",
-							code: code,
-						});
-
-						if (signInResult.status === "complete") {
-							await setActive({ session: signInResult.createdSessionId });
-							Alert.alert("Success", "Logged in successfully");
-							router.push("/(tabs)");
-						}
-					}
-				}
-			}
-
-		} catch (err) {
-			console.error("Google Sign-In Web Error:", err);
-			Alert.alert("Error", "Failed to sign in with Google. Please try again.");
-		} finally {
-			setLoading(false);
-		}
-	};
+	
 
 	const HandleLoginWithEmail = async () => {
 		try {
@@ -129,27 +65,13 @@ export default function AuthScreen() {
 				return;
 			}
 
-			if (!signIn) {
-				Alert.alert("Error", "Sign in is not available.");
-				return;
-			}
-
+			
 			// Attempt to sign in with email and password
-			const result = await signIn.create({
-				identifier: email,
-				password: password,
-			});
+			
 
-			if (result.status === "complete") {
-				await setActive({ session: result.createdSessionId });
-				Alert.alert("Success", "Logged in successfully");
-				router.push("/(tabs)");
-			} else {
-				// Handle additional verification if needed
-				console.log("Email sign-in status:", result.status);
-			}
+			
 
-		} catch (error) {
+		} catch (error:any) {
 			console.error("Email Sign-In Error:", error);
 			if (error.errors && error.errors.length > 0) {
 				Alert.alert("Error", error.errors[0].message);
@@ -264,7 +186,7 @@ export default function AuthScreen() {
 				<View>
 					<Text style={styles.termsText}>
 						If you are a new user then Register first
-						<TouchableOpacity onPress={() => router.push("/(auth)/register")}>
+						<TouchableOpacity onPress={() => router.push('/(auth)')}>
 							<Text
 								style={{
 									color: "#6366F1",

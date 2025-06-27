@@ -1,30 +1,46 @@
+import { AuthenticatedNavigation, AuthNavigation } from '@/components/Navigation';
 import { toastConfig } from '@/configs/toast-config';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
-import type { RootState } from '@/redux/store';
+import { useAppDispatch, useAppSelector } from '@/redux/hook';
+import { checkAuth } from '@/redux/slices/authSlice';
 import { store } from '@/redux/store';
-import { ClerkProvider } from '@clerk/clerk-expo';
-import { tokenCache } from '@clerk/clerk-expo/token-cache';
+import { configureGoogleSignIn } from '@/utils/GoogleSiginIn';
 import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import Toast from 'react-native-toast-message';
-import { Provider, useSelector } from 'react-redux';
+import { Provider } from 'react-redux';
 
 SplashScreen.preventAutoHideAsync();
 
-function AppRouter() {
-  const { isAuthenticated } = useSelector((state: RootState) => state.auth);
+function AppContent() {
+
+  useFrameworkReady();
+
+  const dispatch = useAppDispatch();
+   let { isAuthenticated, loading } = useAppSelector((state) => state.auth);
+
+  useEffect(() => {
+    configureGoogleSignIn();
+    dispatch(checkAuth()),
+    setTimeout(()=>{
+      
+    },500)
+  }, [dispatch]);
+
+  
+
   const [fontsLoaded, fontError] = useFonts({
     'Inter-Regular': Inter_400Regular,
     'Inter-Medium': Inter_500Medium,
     'Inter-SemiBold': Inter_600SemiBold,
     'Inter-Bold': Inter_700Bold,
   });
+  
+console.log("is authenicated",isAuthenticated)
 
-  useFrameworkReady();
+  
 
   useEffect(() => {
     if (fontsLoaded || fontError) {
@@ -36,19 +52,13 @@ function AppRouter() {
     return null;
   }
 
+  if (loading) {
+    return null; 
+  }
+
   return (
     <>
-      {isAuthenticated ? (
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="+not-found" />
-        </Stack>
-      ) : (
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        </Stack>
-      )}
-      <StatusBar style="light" />
+      {isAuthenticated ? <AuthenticatedNavigation /> : <AuthNavigation />}
       <Toast 
         config={toastConfig}
         position="top"
@@ -61,10 +71,8 @@ function AppRouter() {
 
 export default function RootLayout() {
   return (
-    <ClerkProvider tokenCache={tokenCache}>
-      <Provider store={store}>
-        <AppRouter />
-      </Provider>
-    </ClerkProvider>
+    <Provider store={store}>
+      <AppContent />
+    </Provider>
   );
 }

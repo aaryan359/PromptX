@@ -1,4 +1,4 @@
-import { Audio } from 'expo-av';
+// import { Audio } from 'expo-audio';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Mic, MicOff } from 'lucide-react-native';
 import React, { useState } from 'react';
@@ -10,25 +10,25 @@ interface VoiceInputProps {
 
 export default function VoiceInput({ onTranscription }: VoiceInputProps) {
   const [isRecording, setIsRecording] = useState(false);
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [recording, setRecording] = useState(null);
 
   const startRecording = async () => {
     try {
-      const permission = await Audio.requestPermissionsAsync();
+      // const permission = await Audio.requestPermissionsAsync();
       
-      if (permission.status !== 'granted') {
-        Alert.alert('Permission required', 'Please grant microphone permission to use voice input.');
-        return;
-      }
+      // if (permission.status !== 'granted') {
+      //   Alert.alert('Permission required', 'Please grant microphone permission to use voice input.');
+      //   return;
+      // }
 
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      });
+      // await Audio.setAudioModeAsync({
+      //   allowsRecordingIOS: true,
+      //   playsInSilentModeIOS: true,
+      // });
 
-      const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
+      // const { recording } = await Audio.Recording.createAsync(
+      //   Audio.RecordingOptionsPresets.HIGH_QUALITY
+      // );
       
       setRecording(recording);
       setIsRecording(true);
@@ -39,13 +39,13 @@ export default function VoiceInput({ onTranscription }: VoiceInputProps) {
   };
 
   const stopRecording = async () => {
-    if (!recording) return;
+    // if (!recording) return;
 
-    setIsRecording(false);
-    await recording.stopAndUnloadAsync();
+    // setIsRecording(false);
+    // await recording.stopAndUnloadAsync();
     
-    const uri = recording.getURI();
-    setRecording(null);
+    // const uri = recording.getURI();
+    // setRecording(null);
 
     // In a real app, you would send this audio to a speech-to-text service
     // For demo purposes, we'll simulate a transcription

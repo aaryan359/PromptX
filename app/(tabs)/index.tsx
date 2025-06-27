@@ -1,14 +1,15 @@
+import { ChatService } from '@/api/Chat';
 import ChatMessage from '@/components/ChatMessage';
 import CustomHeader from '@/components/CustomHeader';
 import SystemPromptButton from '@/components/SystemPromptButton';
 import VoiceInput from '@/components/VoiceInput';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Code, FileText, Palette, PenTool, Send, Sparkles } from 'lucide-react-native';
-import React, { useEffect, useRef, useState } from 'react';
+import { formatLLMResponse } from '@/utils/messageFormatter'; // Import the formatter
 
+import { LinearGradient } from 'expo-linear-gradient';
+import { Code, Code2, FileText, Palette, PenTool, Send, Sparkles, User } from 'lucide-react-native';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
-  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -18,189 +19,222 @@ import {
   View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 
 interface Message {
   id: string;
-  text: string;
-  isUser: boolean;
+  content: string;
+  role: 'user' | 'assistant';
   timestamp: Date;
 }
 
 const systemPrompts = [
   {
-    id: 'software-engineer',
-    title: 'Software Engineer',
+    id: 'software_engineer',
+    title: 'Software',
     icon: Code,
-    prompt: 'You are an expert software engineer with deep knowledge in programming languages, software architecture, and best practices. Help users with coding problems, system design, and technical solutions.',
+    prompt: 'software_engineer',
   },
   {
-    id: 'designer',
+    id: 'Designer',
     title: 'Designer',
     icon: Palette,
-    prompt: 'You are a creative UI/UX designer with expertise in visual design, user experience, and modern design trends. Help users with design concepts, color schemes, layouts, and user interfaces.',
+    prompt: 'Designer',
   },
   {
-    id: 'content-creator',
-    title: 'Content Creator',
+    id: 'Content_Creator',
+    title: 'Content',
     icon: PenTool,
-    prompt: 'You are a skilled content creator with expertise in social media, video content, and digital marketing. Help users create engaging content, develop content strategies, and grow their online presence.',
+    prompt: 'Content_Creator',
   },
   {
-    id: 'writer',
+    id: 'Writer',
     title: 'Writer',
     icon: FileText,
-    prompt: 'You are a professional writer with expertise in various writing styles, grammar, and storytelling. Help users with creative writing, editing, professional communication, and content development.',
+    prompt: 'Writer',
   },
   {
-    id: 'general',
-    title: 'General AI',
+    id: 'General_AI',
+    title: 'General',
     icon: Sparkles,
-    prompt: 'You are a helpful AI assistant ready to help with any questions or tasks. Provide accurate, helpful, and engaging responses to a wide variety of topics.',
+    prompt: 'General_AI',
   },
+  {
+    id:'Data_Scientist',
+    title:'Data Scientist',
+    icon:Code2,
+    prompt:'Data_Scientist'
+  },
+  {
+    id:'DevOps_Engineer',
+    title:'DevOps Engineer',
+    icon:Code2,
+    prompt:'DevOps_Engineer'
+  },
+  {
+    id:'Best_Friend_AI',
+    title:'Best Friend',
+    icon:User,
+    prompt:'Best_Friend_AI'
+  }
 ];
 
 export default function ChatScreen() {
-  const buttonClickCount = 0;
-  const user = {
-    picture: 'ww',
-    name: 'Aryan Meena',
-    email: 'emailemail@email.com',
-  };
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
-  const [selectedPrompt, setSelectedPrompt] = useState(systemPrompts[4]);
+  const [selectedPrompt, setSelectedPrompt] = useState(systemPrompts[4]); 
   const [isLoading, setIsLoading] = useState(false);
-  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showAllPrompts, setShowAllPrompts] = useState(false);
+  const [hasSubscription, setHasSubscription] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
 
   useEffect(() => {
     const welcomeMessage: Message = {
       id: '1',
-      text: 'Hello! I\'m your AI assistant. Choose a system prompt above to get started, or ask me anything!',
-      isUser: false,
+      content: 'Hello! I\'m your AI assistant. Choose a system prompt above to get started, or ask me anything!',
+      role: 'assistant',
       timestamp: new Date(),
     };
     setMessages([welcomeMessage]);
   }, []);
 
-const handlePromptSelect = (prompt: typeof systemPrompts[0]) => {
-    if (buttonClickCount >= 2 && !user) {
-      setShowAuthModal(true);
-      return;
-    }
-    
-    setSelectedPrompt(prompt);
-  
-    
-    // Add system message
-    const systemMessage: Message = {
-      id: Date.now().toString(),
-      text: `Switched to ${prompt.title} mode. I'm ready to help you with ${prompt.title.toLowerCase()}-related questions!`,
-      isUser: false,
-      timestamp: new Date(),
-    };
-    setMessages(prev => [...prev, systemMessage]);
-  };
-
   const handleSendMessage = async () => {
     if (!inputText.trim()) return;
 
+    // Create user message
     const userMessage: Message = {
       id: Date.now().toString(),
-      text: inputText,
-      isUser: true,
+      content: inputText,
+      role: 'user',
       timestamp: new Date(),
     };
 
+    // Optimistically add user message to UI
     setMessages(prev => [...prev, userMessage]);
     setInputText('');
     setIsLoading(true);
+    
 
-    // Simulate AI response (replace with actual API call)
-    setTimeout(() => {
+    try {
+      // Send both the system prompt and user message to backend
+      const response = await ChatService.sendMessage({
+        systemPrompt: selectedPrompt.prompt,
+        userMessage: inputText
+      });
+
+      console.log("response from llm is", response.data);
+      
+      // Use the enhanced formatter to clean the response
+      let aiResponseContent = '';
+      
+      if (response.data && typeof response.data === 'object') {
+        const llmResponse = response.data.response || '';
+        aiResponseContent = formatLLMResponse(llmResponse);
+      } else {
+        const rawResponse = typeof response.data === 'string' ? response.data : '';
+        aiResponseContent = formatLLMResponse(rawResponse);
+      }
+
+      // Fallback if formatter returns empty
+      if (!aiResponseContent || aiResponseContent.trim().length === 0) {
+        aiResponseContent = 'I received your message. How can I help you today?';
+      }
+
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
-        text: generateAIResponse(inputText, selectedPrompt),
-        isUser: false,
+        content: aiResponseContent,
+        role: 'assistant',
         timestamp: new Date(),
       };
+      
       setMessages(prev => [...prev, aiResponse]);
+    } catch (error) {
+      console.error('API Error:', error);
+      const errorResponse: Message = {
+        id: (Date.now() + 1).toString(),
+        content: 'Sorry, there was an error processing your request. Please try again.',
+        role: 'assistant',
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, errorResponse]);
+      
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to send message',
+      });
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
-  const generateAIResponse = (input: string, prompt: typeof systemPrompts[0]) => {
-    // Simulate different responses based on selected prompt
-    const responses = {
-      'software-engineer': [
-        'Based on your question about programming, I recommend using a clean architecture approach...',
-        'For this technical challenge, consider implementing the following solution...',
-        'From a software engineering perspective, the best practice would be to...',
-      ],
-      'designer': [
-        'From a design standpoint, I suggest using a clean, modern aesthetic with...',
-        'Consider these UI/UX principles for better user experience...',
-        'The visual hierarchy could be improved by...',
-      ],
-      'content-creator': [
-        'For engaging content, try focusing on storytelling elements that...',
-        'Your content strategy should include these key components...',
-        'To boost engagement, consider creating content that...',
-      ],
-      'writer': [
-        'From a writing perspective, your piece could benefit from...',
-        'Consider restructuring your content to improve readability by...',
-        'The narrative flow would be stronger if you...',
-      ],
-      'general': [
-        'That\'s an interesting question! Based on my knowledge...',
-        'I can help you with that. Here\'s what I recommend...',
-        'Great question! Let me provide you with a comprehensive answer...',
-      ],
-    };
-
-    const promptResponses = responses[prompt.id as keyof typeof responses] || responses.general;
-    return promptResponses[Math.floor(Math.random() * promptResponses.length)];
+  const handleShowMorePrompts = () => {
+    if (!hasSubscription) {
+      Toast.show({
+        type: 'info',
+        text1: 'Please Upgrade',
+        text2: 'Subscribe to access all expert prompts',
+      });
+      return;
+    }
+    setShowAllPrompts(true);
   };
 
   const handleVoiceTranscription = (text: string) => {
     setInputText(text);
   };
 
-  const handleAuthModalClose = () => {
-    setShowAuthModal(false);
-  };
+  const defaultVisiblePrompts = [systemPrompts[4], systemPrompts[0]];
 
-  const handleSignIn = async () => {
-   
-    setShowAuthModal(false);
-  };
- 
-
+  const visiblePrompts = showAllPrompts 
+    ? (hasSubscription ? systemPrompts : defaultVisiblePrompts) 
+    : defaultVisiblePrompts;
 
   return (
     <LinearGradient colors={['#F5F7FF', '#E8ECFF']} style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-
+        <CustomHeader />
         
-       <CustomHeader />
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.promptsContainer}
-          contentContainerStyle={styles.promptsContent}
-        >
-          {systemPrompts.map((prompt) => (
-            <SystemPromptButton
-              key={prompt.id}
-              title={prompt.title}
-              icon={prompt.icon}
-              onPress={() => handlePromptSelect(prompt)}
-              isSelected={selectedPrompt.id === prompt.id}
-            />
-          ))}
-        </ScrollView>
+        {/* System Prompts Row */}
+        <View style={styles.promptsContainer}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.promptsContent}
+          >
+            {visiblePrompts.map((prompt) => (
+              <SystemPromptButton
+                key={prompt.id}
+                title={prompt.title}
+                icon={prompt.icon}
+                onPress={() => setSelectedPrompt(prompt)}
+                isSelected={selectedPrompt.id === prompt.id}
+                disabled={false}
+              />
+            ))}
+            
+            {!showAllPrompts && systemPrompts.length > 2 && (
+              <TouchableOpacity 
+                style={styles.moreButton}
+                onPress={handleShowMorePrompts}
+              >
+                <LinearGradient 
+                  colors={['#A1A1AA', '#A1A1AA']} 
+                  style={styles.moreButtonGradient}
+                >
+                  <Text style={styles.moreButtonText}>More</Text>
+                  <View style={styles.iconContainer}>
+                    <View style={styles.premiumBadge}>
+                      <Text style={styles.premiumBadgeText}>pro</Text>
+                    </View>
+                  </View>
+                </LinearGradient>
+              </TouchableOpacity>
+            )}
+          </ScrollView>
+        </View>
 
+        {/* Chat Messages */}
         <ScrollView
           ref={scrollViewRef}
           style={styles.messagesContainer}
@@ -210,8 +244,8 @@ const handlePromptSelect = (prompt: typeof systemPrompts[0]) => {
           {messages.map((message) => (
             <ChatMessage
               key={message.id}
-              message={message.text}
-              isUser={message.isUser}
+              message={message.content}
+              isUser={message.role === 'user'}
               timestamp={message.timestamp}
             />
           ))}
@@ -222,6 +256,7 @@ const handlePromptSelect = (prompt: typeof systemPrompts[0]) => {
           )}
         </ScrollView>
 
+        {/* Input Area */}
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.inputContainer}
@@ -236,40 +271,24 @@ const handlePromptSelect = (prompt: typeof systemPrompts[0]) => {
               placeholderTextColor="#64748B"
               multiline
               maxLength={1000}
+              onSubmitEditing={handleSendMessage}
+              returnKeyType="send"
+              editable={!isLoading}
             />
-            <TouchableOpacity onPress={handleSendMessage} style={styles.sendButton}>
-              <LinearGradient colors={['#8B5CF6', '#7C3AED']} style={styles.sendGradient}>
+            <TouchableOpacity 
+              onPress={handleSendMessage} 
+              style={styles.sendButton}
+              disabled={isLoading || !inputText.trim()}
+            >
+              <LinearGradient 
+                colors={['#8B5CF6', '#7C3AED']} 
+                style={styles.sendGradient}
+              >
                 <Send size={20} color="#FFFFFF" />
               </LinearGradient>
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
-
-        <Modal
-          visible={showAuthModal}
-          transparent
-          animationType="fade"
-          onRequestClose={handleAuthModalClose}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Authentication Required</Text>
-              <Text style={styles.modalText}>
-                You've used more than 2 system prompts. Please sign in with Google to continue using all features.
-              </Text>
-              <View style={styles.modalButtons}>
-                <TouchableOpacity onPress={handleAuthModalClose} style={styles.cancelButton}>
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={handleSignIn} style={styles.signInButton}>
-                  <LinearGradient colors={['#8B5CF6', '#7C3AED']} style={styles.signInGradient}>
-                    <Text style={styles.signInButtonText}>Sign In</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </Modal>
       </SafeAreaView>
     </LinearGradient>
   );
@@ -283,42 +302,39 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
-  header: {
-    paddingHorizontal: 15,
-    paddingVertical: 16,
-    alignItems: 'flex-start',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
-  },
-  title: {
-    color: '#1E293B',
-    fontSize: 24,
-    fontFamily: 'Inter-Bold',
-  },
-  subtitle: {
-    color: '#64748B',
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    marginTop: 4,
-  },
   promptsContainer: {
-    maxHeight: 40,
-    marginTop:10,
+    maxHeight: 50,
+    marginTop: 10,
     paddingHorizontal: 15,
-    backgroundColor: '#FFFFFF',
-  
   },
   promptsContent: {
     paddingRight: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  moreButton: {
+    marginRight: 12,
+  },
+  moreButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 8,
+    borderRadius: 12,
+  },
+  moreButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    marginLeft: 4
   },
   messagesContainer: {
     flex: 1,
     paddingHorizontal: 15,
-  
   },
   messagesContent: {
     paddingBottom: 10,
-    
   },
   loadingContainer: {
     alignItems: 'center',
@@ -332,6 +348,7 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     paddingHorizontal: 10,
+    paddingBottom: 10,
   },
   inputRow: {
     flexDirection: 'row',
@@ -349,11 +366,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
-
   sendButton: {
+    marginLeft: 8,
     alignSelf: 'flex-end',
   },
-
   sendGradient: {
     width: 48,
     height: 48,
@@ -361,69 +377,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
+  iconContainer: {
+    position: 'relative',
+    marginRight: 4,
   },
-
-  modalContent: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 24,
-    width: '100%',
-    maxWidth: 400,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+  premiumBadge: {
+    position: 'absolute',
+    right: -13,
+    top: -15,
+    backgroundColor: '#F59E0B',
+    borderRadius: 4,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
   },
-  modalTitle: {
-    color: '#1E293B',
-    fontSize: 20,
-    fontFamily: 'Inter-Bold',
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  modalText: {
-    color: '#64748B',
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 24,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  cancelButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    backgroundColor: '#F1F5F9',
-  },
-  cancelButtonText: {
-    color: '#1E293B',
-    fontSize: 16,
-    fontFamily: 'Inter-Medium',
-    textAlign: 'center',
-  },
-  signInButton: {
-    flex: 1,
-  },
-  signInGradient: {
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  signInButtonText: {
+  premiumBadgeText: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontFamily: 'Inter-Medium',
+    fontSize: 8,
+    fontWeight: 'bold',
   },
 });

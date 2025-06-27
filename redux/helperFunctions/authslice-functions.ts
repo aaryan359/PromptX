@@ -1,11 +1,12 @@
 
-import SecureStore from "expo-secure-store";
+import * as SecureStore from 'expo-secure-store';
 import Toast from "react-native-toast-message";
 
 
 export const storeToken = async (token: string) => {
   try {
     await SecureStore.setItemAsync('authToken', token);
+    console.log('Token stored successfully');
   } catch (error) {
     console.error('Error storing token:', error);
     Toast.show({
@@ -18,7 +19,9 @@ export const storeToken = async (token: string) => {
 
 export const getToken = async () => {
   try {
-    return await SecureStore.getItemAsync('authToken');
+    const token = await SecureStore.getItemAsync('authToken');
+    console.log('Token retrieved successfully:', token);
+    return token;
   } catch (error) {
     console.error('Error retrieving token:', error);
     return null;

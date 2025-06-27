@@ -1,4 +1,6 @@
-import { useSignIn, useSignUp } from "@clerk/clerk-expo";
+
+import { useAppDispatch } from "@/redux/hook";
+import { register } from "@/redux/slices/authSlice";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -13,10 +15,13 @@ import {
 	View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Toast from "react-native-toast-message";
+
 
 export default function AuthScreen() {
-	const { signIn } = useSignIn();
-	const { signUp } = useSignUp();
+    const dispatch = useAppDispatch();
+	
+
 	const router = useRouter();
 
 	const [loading, setLoading] = useState(false);
@@ -25,43 +30,59 @@ export default function AuthScreen() {
 	const [password, setPassword] = useState("");
 	const [name, setName] = useState("");
 
+	
 	const handleGoogleSignIn = async () => {
-		try {
-			setLoading(true);
-			if (!signIn) {
-				Alert.alert(
-					"Error",
-					"Sign in is not available."
-				);
-				return;
-			}
-			await signIn.authenticateWithRedirect({
-				strategy: "oauth_google",
-				redirectUrl:
-					"https://your-app-domain.com/oauth-callback",
-				redirectUrlComplete:
-					"https://your-app-domain.com/oauth-callback",
-			});
-		} catch (err: any) {
-			Alert.alert("Error", err.errors[0].message);
-			console.error(JSON.stringify(err, null, 2));
-		} finally {
-			setLoading(false);
-		}
+		
 	};
+
 
 	const HandleRegisterWithEmail = async () => {
 		try {
 			setLoading(true);
-			// Implement your JWT login logic here
-			// await yourAuthService.login(email, password);
-			Alert.alert("Success", "Logged in successfully");
+			if(!email || !password || !name) {
+				Toast.show({
+					type: "error",
+					text1: "Error",
+					text2: "Please fill all fields",
+				});
+				return;
+			}
+
+		   const response  = await	dispatch(register({
+				email,
+				password,
+				name,
+			}));
+
+			response.payload = response.payload as any;
+			if (response.payload?.token) {
+				Toast.show({
+					type: "success",
+					text1: "Registration Successful",
+					text2: "You can now login",
+				});
+				
+			} else if (response.payload?.message) {
+				Toast.show({
+					type: "error",
+					text1: "Registration Failed",
+					text2: response.payload.message,
+				});
+				return;
+			}
+			
+
+			;
+			
+            setLoading(false);
+			
 		} catch (error: any) {
 			Alert.alert("Error", error.message);
 		} finally {
 			setLoading(false);
 		}
 	};
+
 
 	return (
 		<SafeAreaView style={styles.safeArea}>

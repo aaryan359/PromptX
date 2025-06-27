@@ -1,49 +1,70 @@
+import { useAppDispatch, useAppSelector } from '@/redux/hook';
+import { logout } from '@/redux/slices/authSlice';
 import {
-    Bookmark,
-    Crown,
-    Edit,
-    HelpCircle,
-    LogOut,
-    PlusCircle,
-    Settings,
-    Shield,
-    Star,
-    User,
-    Zap
+  Bookmark,
+  Crown,
+  Edit,
+  HelpCircle,
+  LogOut,
+  PlusCircle,
+  Settings,
+  Shield,
+  Star,
+  User,
+  Zap
 } from 'lucide-react-native';
 import React from 'react';
 import {
-    Alert,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 
 export default function ProfileScreen() {
-  const handleSignOut = () => {
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Sign Out', style: 'destructive', onPress: () => {} },
-      ]
-    );
+  const dispatch = useAppDispatch();
+
+  const handleSignOut = async() => {
+   
+    try {
+      dispatch(logout())
+      
+        Toast.show({
+          type:'success',
+          text1:"Logout SuccessFull",
+          text2:'you are logout now',
+        })
+      
+      
+    } catch (error:any) {
+       Toast.show({
+          type:'error',
+          text1:"Logout Failed",
+          text2:`${error.message}`,
+        })
+    }
   };
+
+
 
   const handleAction = (action: string) => {
     console.log('Action:', action);
-    // Implement navigation or actions
+   
   };
 
-  const user = {
-    picture: 'ww',
-    name: 'Aryan Meena',
-    email: 'emailemail@email.com',
-  };
+  // const user = {
+  //   picture: 'ww',
+  //   name: 'Aryan Meena',
+  //   email: 'emailemail@email.com',
+  // };
+
+
+  const user = useAppSelector((state)=> state.user)
+
+  console.log(" user form redux",user)
 
   return (
     <View style={styles.container}>
@@ -55,7 +76,7 @@ export default function ProfileScreen() {
               {user.picture ? (
                 <View style={styles.avatar}>
                   <Text style={styles.avatarText}>
-                    {user.name.charAt(0).toUpperCase()}
+                    {user?.name.charAt(0).toUpperCase()}
                   </Text>
                 </View>
               ) : (

@@ -1,56 +1,40 @@
-import { SignedIn, SignedOut, useUser } from '@clerk/clerk-expo';
-import { Ionicons } from '@expo/vector-icons';
-import { Link } from 'expo-router';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { SignOutButton } from './SignOutButton';
 
 const CustomHeader = () => {
-    const { user } = useUser();
+    // Replace with your actual user data
+    const user = {
+        name: "John Doe",
+        imageUrl: null, // Set to null for placeholder
+    };
 
     return (
         <View style={styles.headerContainer}>
-            {/* Left side - App Logo/Name */}
-            <View style={styles.logoContainer}>
+            {/* Left side - Hamburger menu and App Name */}
+            <View style={styles.leftContainer}>
+                <TouchableOpacity style={styles.menuButton}>
+                    <Ionicons name="menu" size={22} color="#6941C6" />
+                </TouchableOpacity>
                 <Text style={styles.logoText}>PromptX</Text>
             </View>
 
-            {/* Right side - User/Auth controls */}
-            <View style={styles.authContainer}>
-                <SignedIn>
-                    <View style={styles.userProfile}>
-                        {user?.imageUrl ? (
-                            <Image 
-                                source={{ uri: user.imageUrl }} 
-                                style={styles.profileImage}
-                            />
-                        ) : (
-                            <View style={styles.profilePlaceholder}>
-                                <Ionicons name="person" size={20} color="#fff" />
-                            </View>
-                        )}
-                        <View style={styles.userInfo}>
-                            <Text style={styles.userEmail} numberOfLines={1}>
-                                {user?.emailAddresses[0]?.emailAddress}
-                            </Text>
-                            <SignOutButton style={styles.signOutButton} />
-                        </View>
+            {/* Right side - Search and Profile */}
+            <View style={styles.rightContainer}>
+                <TouchableOpacity style={styles.searchButton}>
+                    <Ionicons name="search" size={20} color="#6941C6" />
+                </TouchableOpacity>
+                
+                {user.imageUrl ? (
+                    <Image 
+                        source={{ uri: user.imageUrl }} 
+                        style={styles.profileImage}
+                    />
+                ) : (
+                    <View style={styles.profilePlaceholder}>
+                        <MaterialIcons name="person" size={20} color="#fff" />
                     </View>
-                </SignedIn>
-                <SignedOut>
-                    <View style={styles.authButtons}>
-                        <Link href="/(auth)/login" asChild>
-                            <TouchableOpacity style={styles.authButton}>
-                                <Text style={styles.authButtonText}>Sign In</Text>
-                            </TouchableOpacity>
-                        </Link>
-                        <Link href="/(auth)/register" asChild>
-                            <TouchableOpacity style={[styles.authButton, styles.signUpButton]}>
-                                <Text style={[styles.authButtonText, styles.signUpButtonText]}>Sign Up</Text>
-                            </TouchableOpacity>
-                        </Link>
-                    </View>
-                </SignedOut>
+                )}
             </View>
         </View>
     );
@@ -70,67 +54,62 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
-        elevation: 3,
+        elevation: 5,
     },
-    logoContainer: {
+    leftContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
         flex: 1,
     },
+    menuButton: {
+        marginRight: 5,
+    },
     logoText: {
-        fontSize: 22,
+        fontSize: 20,
         fontWeight: 'bold',
-        color: '#4a6fa5',
+        color: '#6941C6',
+        fontFamily: 'Inter-Bold',
     },
-    authContainer: {
+    rightContainer: {
         flexDirection: 'row',
         alignItems: 'center',
+        gap: 12,
     },
-    userProfile: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
+    searchButton: {
+        padding: 6,
     },
     profileImage: {
-        width: 40,
-        height: 40,
+        width: 35,
+        height: 35,
         borderRadius: 20,
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
     },
     profilePlaceholder: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: '#4a6fa5',
+        width: 35,
+        height: 35,
+        borderRadius: 30,
+        backgroundColor: '#6941C6',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
+    },
+    notificationBadge: {
+        position: 'absolute',
+        right: -1,
+        top: -5,
+        backgroundColor: '#ff3b30',
+        borderRadius: 10,
+        width: 18,
+        height: 18,
         justifyContent: 'center',
         alignItems: 'center',
     },
-    userInfo: {
-        maxWidth: 150,
-    },
-    userEmail: {
-        fontSize: 14,
-        color: '#333',
-    },
-    signOutButton: {
-        marginTop: 2,
-    },
-    authButtons: {
-        flexDirection: 'row',
-        gap: 8,
-    },
-    authButton: {
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 6,
-        backgroundColor: '#f0f0f0',
-    },
-    signUpButton: {
-        backgroundColor: '#4a6fa5',
-    },
-    authButtonText: {
-        fontSize: 14,
-        color: '#333',
-    },
-    signUpButtonText: {
+    badgeText: {
         color: '#fff',
+        fontSize: 10,
+        fontWeight: 'bold',
     },
 });
 

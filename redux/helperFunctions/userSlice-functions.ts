@@ -1,9 +1,10 @@
-import SecureStore from "expo-secure-store";
+import * as SecureStore from 'expo-secure-store';
 import { UserState } from "../slices/userSlice";
 
 
 export const storeUserData = async (userData: UserState) => {
   try {
+    
     await SecureStore.setItemAsync('userData', JSON.stringify(userData));
   } catch (error) {
     console.error('Error storing user data:', error);
