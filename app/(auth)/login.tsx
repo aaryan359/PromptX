@@ -1,7 +1,10 @@
 import { useSignIn } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
+import * as Linking from 'expo-linking';
 import { useRouter } from "expo-router";
+import * as WebBrowser from 'expo-web-browser';
 import { useState } from "react";
+
 import {
 	Alert,
 	Image,
@@ -14,10 +17,11 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-
+// Complete the auth session for web browser
+WebBrowser.maybeCompleteAuthSession();
 
 export default function AuthScreen() {
-	const { signIn } = useSignIn();
+	const { signIn, setActive } = useSignIn();
 	const router = useRouter();
 
 	const [loading, setLoading] = useState(false);
@@ -28,22 +32,89 @@ export default function AuthScreen() {
 		try {
 			setLoading(true);
 			if (!signIn) {
-				Alert.alert(
-					"Error",
-					"Sign in is not available."
-				);
+				Alert.alert("Error", "Sign in is not available.");
 				return;
 			}
-			await signIn.authenticateWithRedirect({
+
+			console.log("Starting Google Sign-In");
+			
+			// Create the sign-in with Google OAuth strategy
+			const result = await signIn.authenticateWithRedirect({
 				strategy: "oauth_google",
-				redirectUrl:
-					"https://your-app-domain.com/oauth-callback",
-				redirectUrlComplete:
-					"https://your-app-domain.com/oauth-callback",
+				redirectUrl: "https://star-seal-72.accounts.dev/sign-in",
+				// Remove redirectUrlComplete or set it to the same as redirectUrl
+				redirectUrlComplete: "/",
 			});
-		} catch (err: any) {
-			Alert.alert("Error", err.errors[0].message);
-			console.error(JSON.stringify(err, null, 2));
+
+			console.log("Google Sign-In result:", result);
+
+			// If the sign-in is complete, set the active session
+			if (result.status === "complete") {
+				await setActive({ session: result.createdSessionId });
+				Alert.alert("Success", "Logged in successfully");
+				router.push("/(tabs)");
+			} else {
+				// Handle any additional verification steps if needed
+				console.log("Sign-in status:", result.status);
+			}
+
+		} catch (err) {
+			console.error("Google Sign-In Error:", err);
+			if (err.errors && err.errors.length > 0) {
+				Alert.alert("Error", err.errors[0].message);
+			} else {
+				Alert.alert("Error", "Failed to sign in with Google. Please try again.");
+			}
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	// Alternative method using web browser flow (if the above doesn't work)
+	const handleGoogleSignInWeb = async () => {
+		try {
+			setLoading(true);
+			if (!signIn) {
+				Alert.alert("Error", "Sign in is not available.");
+				return;
+			}
+
+			console.log("Starting Google Sign-In with Web Flow");
+			
+			// Use the external verification redirect URL from the signIn object
+			const { firstFactorVerification } = signIn;
+			
+			if (firstFactorVerification?.externalVerificationRedirectURL) {
+				// Open the Google OAuth URL in a web browser
+				const result = await WebBrowser.openAuthSessionAsync(
+					firstFactorVerification.externalVerificationRedirectURL,
+					Linking.createURL("/")
+				);
+
+				if (result.type === 'success' && result.url) {
+					// Parse the callback URL to get the verification data
+					const url = new URL(result.url);
+					const code = url.searchParams.get('code');
+					
+					if (code) {
+						// Complete the sign-in process
+						const signInResult = await signIn.attemptFirstFactor({
+							strategy: "oauth_google",
+							code: code,
+						});
+
+						if (signInResult.status === "complete") {
+							await setActive({ session: signInResult.createdSessionId });
+							Alert.alert("Success", "Logged in successfully");
+							router.push("/(tabs)");
+						}
+					}
+				}
+			}
+
+		} catch (err) {
+			console.error("Google Sign-In Web Error:", err);
+			Alert.alert("Error", "Failed to sign in with Google. Please try again.");
 		} finally {
 			setLoading(false);
 		}
@@ -52,9 +123,39 @@ export default function AuthScreen() {
 	const HandleLoginWithEmail = async () => {
 		try {
 			setLoading(true);
-			Alert.alert("Success", "Logged in successfully");
-		} catch (error: any) {
-			Alert.alert("Error", error.message);
+			
+			if (!email || !password) {
+				Alert.alert("Error", "Please enter both email and password");
+				return;
+			}
+
+			if (!signIn) {
+				Alert.alert("Error", "Sign in is not available.");
+				return;
+			}
+
+			// Attempt to sign in with email and password
+			const result = await signIn.create({
+				identifier: email,
+				password: password,
+			});
+
+			if (result.status === "complete") {
+				await setActive({ session: result.createdSessionId });
+				Alert.alert("Success", "Logged in successfully");
+				router.push("/(tabs)");
+			} else {
+				// Handle additional verification if needed
+				console.log("Email sign-in status:", result.status);
+			}
+
+		} catch (error) {
+			console.error("Email Sign-In Error:", error);
+			if (error.errors && error.errors.length > 0) {
+				Alert.alert("Error", error.errors[0].message);
+			} else {
+				Alert.alert("Error", "Failed to sign in. Please check your credentials.");
+			}
 		} finally {
 			setLoading(false);
 		}
@@ -64,155 +165,114 @@ export default function AuthScreen() {
 		<SafeAreaView style={styles.safeArea}>
 			<ScrollView contentContainerStyle={styles.container}>
 				<View style={styles.header}>
-					<Text style={styles.title}>
-						PromptX
-					</Text>
-					<Text style={styles.subtitle}>
-						Your AI prompt marketplace
-					</Text>
+					<Text style={styles.title}>PromptX</Text>
+					<Text style={styles.subtitle}>Your AI prompt marketplace</Text>
 				</View>
 
 				<View style={styles.form}>
 					<View style={styles.form}>
-						<View
-							style={
-								styles.inputContainer
-							}>
+						<View style={styles.inputContainer}>
 							<Ionicons
 								name="mail-outline"
 								size={20}
 								color="#64748B"
-								style={
-									styles.inputIcon
-								}
+								style={styles.inputIcon}
 							/>
 							<TextInput
-								style={
-									styles.input
-								}
+								style={styles.input}
 								placeholder="Email"
 								placeholderTextColor="#94A3B8"
 								value={email}
-								onChangeText={
-									setEmail
-								}
+								onChangeText={setEmail}
 								keyboardType="email-address"
 								autoCapitalize="none"
 							/>
 						</View>
 
-						<View
-							style={
-								styles.inputContainer
-							}>
+						<View style={styles.inputContainer}>
 							<Ionicons
 								name="lock-closed-outline"
 								size={20}
 								color="#64748B"
-								style={
-									styles.inputIcon
-								}
+								style={styles.inputIcon}
 							/>
 							<TextInput
-								style={
-									styles.input
-								}
+								style={styles.input}
 								placeholder="Password"
 								placeholderTextColor="#94A3B8"
 								value={password}
-								onChangeText={
-									setPassword
-								}
+								onChangeText={setPassword}
 								secureTextEntry
 							/>
 						</View>
 
-						<TouchableOpacity
-							style={
-								styles.forgotPassword
-							}>
-							<Text
-								style={
-									styles.forgotPasswordText
-								}>
+						<TouchableOpacity style={styles.forgotPassword}>
+							<Text style={styles.forgotPasswordText}>
 								Forgot password?
 							</Text>
 						</TouchableOpacity>
 
 						<TouchableOpacity
-							style={
-								styles.primaryButton
-							}
-							onPress={
-								HandleLoginWithEmail
-							}
-							disabled={loading}>
-							<Text
-								style={
-									styles.primaryButtonText
-								}>
-								{loading
-									? "Logging in..."
-									: "Login"}
+							style={styles.primaryButton}
+							onPress={HandleLoginWithEmail}
+							disabled={loading}
+						>
+							<Text style={styles.primaryButtonText}>
+								{loading ? "Logging in..." : "Login"}
 							</Text>
 						</TouchableOpacity>
 					</View>
 
 					<View style={styles.dividerContainer}>
-						<View
-							style={
-								styles.dividerLine
-							}
-						/>
-						<Text
-							style={
-								styles.dividerText
-							}>
-							OR
-						</Text>
-						<View
-							style={
-								styles.dividerLine
-							}
-						/>
+						<View style={styles.dividerLine} />
+						<Text style={styles.dividerText}>OR</Text>
+						<View style={styles.dividerLine} />
 					</View>
+
 					<TouchableOpacity
 						style={styles.socialButton}
-						onPress={handleGoogleSignIn}
-						disabled={loading}>
+						onPress={handleGoogleSignIn} // Try this first
+						disabled={loading}
+					>
 						<Image
 							source={require("../../assets/images/googleicon.png")}
-							style={
-								styles.socialIcon
-							}
+							style={styles.socialIcon}
 						/>
-						<Text
-							style={
-								styles.socialButtonText
-							}>
-							{loading
-								? "Logging in..."
-								: "Continue with Google"}
+						<Text style={styles.socialButtonText}>
+							{loading ? "Logging in..." : "Continue with Google"}
 						</Text>
 					</TouchableOpacity>
+
+					{/* Alternative button for web flow - uncomment if needed */}
+					{/* 
+					<TouchableOpacity
+						style={[styles.socialButton, { marginTop: 10 }]}
+						onPress={handleGoogleSignInWeb}
+						disabled={loading}
+					>
+						<Image
+							source={require("../../assets/images/googleicon.png")}
+							style={styles.socialIcon}
+						/>
+						<Text style={styles.socialButtonText}>
+							{loading ? "Logging in..." : "Continue with Google (Web)"}
+						</Text>
+					</TouchableOpacity>
+					*/}
 				</View>
+
 				<View>
 					<Text style={styles.termsText}>
-						If you are a new user then
-						Register first
-						<TouchableOpacity
-							onPress={() =>
-								router.push(
-									"/(auth)/register"
-								)
-							}>
+						If you are a new user then Register first
+						<TouchableOpacity onPress={() => router.push("/(auth)/register")}>
 							<Text
 								style={{
 									color: "#6366F1",
 									marginLeft: 4,
 									fontWeight: "bold",
 									fontSize: 14,
-								}}>
+								}}
+							>
 								Register
 							</Text>
 						</TouchableOpacity>
