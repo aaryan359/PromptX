@@ -65,7 +65,7 @@ export default function TabLayout() {
         }}
         tabBar={({ state, descriptors, navigation }) => (
           <View style={{ 
-            backgroundColor: '#FFFFFF',
+            backgroundColor: 'pink',
             borderRadius: 20,
             marginBottom: Platform.OS === 'ios' ? 20 : 5,
             height: Platform.OS === 'ios' ? 80 : 72,

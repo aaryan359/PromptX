@@ -1,6 +1,6 @@
 import * as Speech from "expo-speech";
-import { Volume2 } from "lucide-react-native";
-import React from "react";
+import { Volume2, VolumeX } from "lucide-react-native";
+import React, { useRef, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 interface ChatMessageProps {
@@ -14,25 +14,54 @@ export default function ChatMessage({
   isUser,
   timestamp,
 }: ChatMessageProps) {
+
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const speakingRef = useRef(false);
+
   const speakMessage = () => {
-    if (!isUser) {
+    if (!isUser && !isSpeaking) {
       // Clean message for speech by removing extra formatting
       const cleanMessage = message
         .replace(/```[\s\S]*?```/g, '') // Remove code blocks
         .replace(/\n\s+/g, '\n') // Remove excessive indentation
         .replace(/^\d+\.\s/gm, '') // Remove numbered list markers
         .replace(/^•\s/gm, '') // Remove bullet points
-        .replace(/^---$/gm, '') // Remove horizontal rules
-        .replace(/"/g, '') // Remove quotes
+        .replace(/^---$/gm, '') 
+        .replace(/"/g, '')
         .trim();
-      
+
+      setIsSpeaking(true);
+      speakingRef.current = true;
+
       Speech.speak(cleanMessage, {
-        language: 'en-US',
-        pitch: 1.0,
+        language:'en-US',
+        pitch: 1,
         rate: 0.8,
+        onDone: () => {
+          setIsSpeaking(false);
+          speakingRef.current = false;
+        },
+        onStopped: () => {
+          setIsSpeaking(false);
+          speakingRef.current = false;
+        },
+        onError: () => {
+          setIsSpeaking(false);
+          speakingRef.current = false;
+        }
       });
     }
   };
+
+
+  const stopSpeaking = () => {
+    if (isSpeaking || speakingRef.current) {
+      Speech.stop();
+      setIsSpeaking(false);
+      speakingRef.current = false;
+    }
+  };
+
 
   // Enhanced function to render formatted message
   const renderFormattedMessage = (text: string) => {
@@ -152,8 +181,13 @@ export default function ChatMessage({
           </View>
           <TouchableOpacity
             style={styles.speakButton}
-            onPress={speakMessage}>
-            <Volume2 size={16} color="#8B5CF6" />
+            onPress={isSpeaking ? stopSpeaking : speakMessage}
+          >
+            {isSpeaking ? (
+              <VolumeX size={16} color="#8B5CF6" />
+            ) : (
+              <Volume2 size={16} color="#8B5CF6" />
+            )}
           </TouchableOpacity>
         </View>
       )}

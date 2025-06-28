@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { LucideIcon } from 'lucide-react-native';
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface SystemPromptButtonProps {
   title: string;
@@ -17,7 +17,6 @@ export default function SystemPromptButton({
   onPress,
   isSelected,
   disabled = false,
-
 }: SystemPromptButtonProps) {
   return (
     <TouchableOpacity 
@@ -29,12 +28,14 @@ export default function SystemPromptButton({
       <LinearGradient
         colors={
           disabled ? ['#E5E7EB', '#D1D5DB'] :
-          isSelected ? ['#8B5CF6', '#7C3AED'] : 
+          isSelected ? ['#6941C6', '#6941C6'] : 
           ['#A1A1AA', '#9CA3AF']
         }
-        style={[styles.button]}
+        style={styles.button}
       >
-        
+        <View style={styles.iconContainer}>
+          <Icon size={18} color={disabled ? "#9CA3AF" : "#fff"} />
+        </View>
         <Text style={[
           styles.text,
           disabled && styles.disabledText,
@@ -58,11 +59,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 12,
-    minWidth: 80,
+    minWidth: 50,
   },
   iconContainer: {
-    position: 'relative',
-    marginRight: 4,
+    marginRight: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   premiumBadge: {
     position: 'absolute',

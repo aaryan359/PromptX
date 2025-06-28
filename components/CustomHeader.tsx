@@ -1,6 +1,7 @@
 import { useAppSelector } from '@/redux/hook';
 import { RootState } from '@/redux/store';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -12,17 +13,14 @@ const CustomHeader = () => {
         <View style={styles.headerContainer}>
             {/* Left side - Hamburger menu and App Name */}
             <View style={styles.leftContainer}>
-                <TouchableOpacity style={styles.menuButton}>
-                    <Ionicons name="menu" size={22} color="#6941C6" />
-                </TouchableOpacity>
                 <Text style={styles.logoText}>PromptX</Text>
             </View>
 
-            {/* Right side - Search and Profile */}
-            <View style={styles.rightContainer}>
-                <TouchableOpacity style={styles.searchButton}>
-                    <Ionicons name="search" size={20} color="#6941C6" />
-                </TouchableOpacity>
+
+            <TouchableOpacity
+            onPress={()=>{
+                router.replace('/(tabs)/profile')
+            }} style={styles.rightContainer}>
                 
                 {user.profilePicture ? (
                     <Image 
@@ -34,7 +32,7 @@ const CustomHeader = () => {
                         <MaterialIcons name="person" size={20} color="#fff" />
                     </View>
                 )}
-            </View>
+            </TouchableOpacity>
         </View>
     );
 };
@@ -46,14 +44,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 16,
         paddingVertical: 12,
-        backgroundColor: '#ffffff',
-        borderBottomWidth: 1,
-        borderBottomColor: '#e0e0e0',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 5,
+       backgroundColor: '#F5F7FF',
+
     },
     leftContainer: {
         flexDirection: 'row',
@@ -64,7 +56,7 @@ const styles = StyleSheet.create({
         marginRight: 5,
     },
     logoText: {
-        fontSize: 20,
+        fontSize: 24,
         fontWeight: 'bold',
         color: '#6941C6',
         fontFamily: 'Inter-Bold',

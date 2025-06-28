@@ -7,7 +7,7 @@ export const toastConfig = {
     <View
       style={{
         position: 'absolute',
-         top: 10,
+        top: 10,
         left: '5%',
         right: '5%',
         minHeight: 52,

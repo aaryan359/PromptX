@@ -1,17 +1,25 @@
+import { MarketPlaceService } from '@/api/MarketPlace';
+import CustomHeader from '@/components/CustomHeader';
 import PromptCard from '@/components/PromptCard';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Filter, Plus, Search, TrendingUp } from 'lucide-react-native';
-import React, { useState } from 'react';
+import { Filter, Search, TrendingUp } from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
 import {
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
+
+interface Author {
+  name: string;
+}
 
 interface Prompt {
   id: string;
@@ -20,70 +28,22 @@ interface Prompt {
   category: string;
   price: number;
   rating: number;
-  likes: number;
-  author: string;
+  likesCount:number
+  author: Author;
   content: string;
 }
 
-const samplePrompts: Prompt[] = [
-  {
-    id: '1',
-    title: 'Professional Email Generator',
-    description: 'Generate professional, well-structured emails for any business situation.',
-    category: 'Business',
-    price: 4.99,
-    rating: 4.8,
-    likes: 156,
-    author: 'Sarah Johnson',
-    content: 'You are a professional business communication expert...',
-  },
-  {
-    id: '2',
-    title: 'Creative Story Starter',
-    description: 'Get unique and engaging story ideas with character development.',
-    category: 'Creative',
-    price: 0,
-    rating: 4.6,
-    likes: 203,
-    author: 'Mike Chen',
-    content: 'You are a creative writing assistant that helps generate...',
-  },
-  {
-    id: '3',
-    title: 'Code Review Assistant',
-    description: 'Comprehensive code review with best practices and optimization tips.',
-    category: 'Tech',
-    price: 7.99,
-    rating: 4.9,
-    likes: 89,
-    author: 'Alex Rodriguez',
-    content: 'You are an expert software engineer conducting a thorough code review...',
-  },
-  {
-    id: '4',
-    title: 'Social Media Caption Creator',
-    description: 'Generate engaging captions for Instagram, Twitter, and LinkedIn posts.',
-    category: 'Marketing',
-    price: 2.99,
-    rating: 4.5,
-    likes: 312,
-    author: 'Emma Davis',
-    content: 'You are a social media expert who creates viral-worthy captions...',
-  },
-  {
-    id: '5',
-    title: 'Recipe Optimizer',
-    description: 'Transform any recipe to be healthier while maintaining great taste.',
-    category: 'Lifestyle',
-    price: 0,
-    rating: 4.7,
-    likes: 128,
-    author: 'Chef Marcus',
-    content: 'You are a nutritional expert and chef who specializes in...',
-  },
+const categories = [
+  'All',
+  'Writing',
+  'Coding',
+  'Productivity',
+  'Education',
+  'Design',
+  'Marketing',
+  'Fun',
+  'Other',
 ];
-
-const categories = ['All', 'Business', 'Creative', 'Tech', 'Marketing', 'Lifestyle'];
 
 export default function MarketplaceScreen() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -91,13 +51,37 @@ export default function MarketplaceScreen() {
   const [selectedPrompt, setSelectedPrompt] = useState<Prompt | null>(null);
   const [showPromptModal, setShowPromptModal] = useState(false);
   const [likedPrompts, setLikedPrompts] = useState<Set<string>>(new Set());
+  const [prompts, setPrompts] = useState<Prompt[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const filteredPrompts = samplePrompts.filter(prompt => {
-    const matchesSearch = prompt.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         prompt.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === 'All' || prompt.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+  const fetchPrompts = async () => {
+    setLoading(true);
+    try {
+      const respons = await MarketPlaceService.getPromptByQuery(selectedCategory);
+      setPrompts(respons.data);
+    } catch (error: any) {
+      if (error?.response?.status === 429) {
+        Toast.show({
+          type: 'error',
+          text1: 'Rate limit exceeded',
+          text2: 'You are sending requests too quickly. Please wait and try again.',
+        });
+      } else {
+        Toast.show({
+          type: 'error',
+          text1: 'Error fetching prompts',
+          text2: 'Check your internet connection',
+        });
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPrompts();
+  }, [selectedCategory]);
+
 
   const handlePromptPress = (prompt: Prompt) => {
     setSelectedPrompt(prompt);
@@ -105,7 +89,7 @@ export default function MarketplaceScreen() {
   };
 
   const handleLike = (promptId: string) => {
-    setLikedPrompts(prev => {
+    setLikedPrompts((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(promptId)) {
         newSet.delete(promptId);
@@ -118,22 +102,18 @@ export default function MarketplaceScreen() {
 
   const handleUsePrompt = () => {
     setShowPromptModal(false);
-    // Navigate to chat screen with selected prompt
-    // This would typically use navigation to switch tabs and pass the prompt
   };
 
   const handlePurchasePrompt = () => {
     // Handle prompt purchase
-    console.log('Purchase prompt:', selectedPrompt?.id);
+    // console.log('Purchase prompt:', selectedPrompt?.id);
     setShowPromptModal(false);
   };
+
   return (
     <LinearGradient colors={['#F5F7FF', '#E8ECFF']} style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <View style={styles.header}>
-          
-          <Text style={styles.subtitle}>Discover and share AI prompts</Text>
-        </View>
+        <CustomHeader/>
 
         <View style={styles.searchContainer}>
           <View style={styles.searchBox}>
@@ -181,33 +161,42 @@ export default function MarketplaceScreen() {
         <View style={styles.statsContainer}>
           <View style={styles.statItem}>
             <TrendingUp size={16} color="#10B981" />
-            <Text style={styles.statText}>{filteredPrompts.length} prompts found</Text>
+            <Text style={styles.statText}>{prompts.length} prompts found</Text>
           </View>
         </View>
 
-        <ScrollView style={styles.promptsList} contentContainerStyle={styles.promptsContent}>
-          {filteredPrompts.map((prompt) => (
-            <PromptCard
-              key={prompt.id}
-              id={prompt.id}
-              title={prompt.title}
-              description={prompt.description}
-              category={prompt.category}
-              price={prompt.price}
-              rating={prompt.rating}
-              likes={prompt.likes + (likedPrompts.has(prompt.id) ? 1 : 0)}
-              author={prompt.author}
-              onPress={() => handlePromptPress(prompt)}
-              onLike={() => handleLike(prompt.id)}
-            />
-          ))}
-        </ScrollView>
+        {loading ? (
+          <View style={styles.loaderContainer}>
+            
+              <ActivityIndicator size="large" color="#6941C6" />
+            
+          </View>
+        ) : (
+          <ScrollView style={styles.promptsList} contentContainerStyle={styles.promptsContent}>
+            {prompts.map((prompt) => (
+              <PromptCard
+                key={prompt.id}
+                id={prompt.id}
+                title={prompt.title}
+                description={prompt.description}
+                category={prompt.category}
+                price={prompt.price}
+                rating={prompt.rating}
+                likes={prompt.likesCount + (likedPrompts.has(prompt.id) ? 1 : 0)}
+                author={prompt.author.name}
+                onPress={() => handlePromptPress(prompt)}
+                onLike={() => handleLike(prompt.id)}
+              />
+            ))}
+            {prompts.length === 0 && (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyStateText}>No prompts found.</Text>
+              </View>
+            )}
+          </ScrollView>
+        )}
 
-        <TouchableOpacity style={styles.createButton}>
-          <LinearGradient colors={['#8B5CF6', '#7C3AED']} style={styles.createGradient}>
-            <Plus size={24} color="#FFFFFF" />
-          </LinearGradient>
-        </TouchableOpacity>
+
 
         <Modal
           visible={showPromptModal}
@@ -221,18 +210,18 @@ export default function MarketplaceScreen() {
                 <Text style={styles.modalTitle}>{selectedPrompt?.title}</Text>
                 <Text style={styles.modalCategory}>{selectedPrompt?.category}</Text>
                 <Text style={styles.modalDescription}>{selectedPrompt?.description}</Text>
-                
+
                 <View style={styles.modalStats}>
-                  <Text style={styles.modalAuthor}>By {selectedPrompt?.author}</Text>
+                  <Text style={styles.modalAuthor}>By {selectedPrompt?.author.name}</Text>
                   <Text style={styles.modalRating}>★ {selectedPrompt?.rating}</Text>
                 </View>
-                
+
                 <View style={styles.promptPreview}>
                   <Text style={styles.previewTitle}>Prompt Preview:</Text>
                   <Text style={styles.previewContent}>{selectedPrompt?.content}</Text>
                 </View>
               </ScrollView>
-              
+
               <View style={styles.modalActions}>
                 <TouchableOpacity
                   onPress={() => setShowPromptModal(false)}
@@ -240,7 +229,7 @@ export default function MarketplaceScreen() {
                 >
                   <Text style={styles.cancelButtonText}>Cancel</Text>
                 </TouchableOpacity>
-                
+
                 {selectedPrompt?.price === 0 ? (
                   <TouchableOpacity onPress={handleUsePrompt} style={styles.useButton}>
                     <LinearGradient colors={['#10B981', '#059669']} style={styles.useGradient}>
@@ -268,26 +257,31 @@ export default function MarketplaceScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FF',
+    backgroundColor: "#F8FAFC",
   },
   safeArea: {
     flex: 1,
+    backgroundColor: "#F8FAFC",
   },
   header: {
-    paddingVertical: 10,
-    alignItems: 'center',
-
+   backgroundColor: "#F8FAFC",
+    alignItems: 'flex-start',
+    paddingHorizontal:10
+    
   },
   subtitle: {
     color: '#64748B',
     fontSize: 14,
     fontFamily: 'Inter-Regular',
-    marginTop: 4,
+    marginRight:10,
+    
   },
   searchContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
-    marginBottom: 16,
+    paddingHorizontal: 15,
+    marginBottom: 10,
+    marginTop:5,
+    gap:5
   },
   searchBox: {
     flex: 1,
@@ -360,24 +354,29 @@ const styles = StyleSheet.create({
   },
   promptsList: {
     flex: 1,
-    paddingHorizontal: 20,
-    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    backgroundColor: "#F8FAFC",
   },
   promptsContent: {
     paddingBottom: 100,
   },
-  createButton: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
-  },
-  createGradient: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+  loaderContainer: {
+   backgroundColor: "#F8FAFC",
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  
+  emptyState: {
+    alignItems: 'center',
+    marginTop: 40,
+  },
+  emptyStateText: {
+    color: '#64748B',
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+  },
+  
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',

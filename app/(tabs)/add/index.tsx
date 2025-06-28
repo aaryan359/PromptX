@@ -1,16 +1,17 @@
-import { CheckCircle2, PlusCircle, UploadCloud } from 'lucide-react-native';
+import { MarketPlaceService } from '@/api/MarketPlace';
+import { PlusCircle, UploadCloud } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
-  Alert,
   Image,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 
 const MODELS = [
   { label: 'GPT-4', value: 'gpt-4' },
@@ -34,34 +35,94 @@ const CATEGORIES = [
 export default function AddPromptScreen() {
   const [userPrompt, setUserPrompt] = useState('');
   const [systemPrompt, setSystemPrompt] = useState('');
+  const [promptTitle , setPromptTitle] = useState('');
+  const [promptDescription, setPromptDescription] = useState('');
   const [selectedModel, setSelectedModel] = useState(MODELS[0].value);
   const [selectedCategory, setSelectedCategory] = useState(CATEGORIES[0]);
   const [price, setPrice] = useState('');
   const [isFree, setIsFree] = useState(true);
   const [outputImages, setOutputImages] = useState<string[]>([]);
   const [outputText, setOutputText] = useState('');
-  const [outputPDFs, setOutputPDFs] = useState<string[]>([]);
-  const [submitted, setSubmitted] = useState(false);
 
-  // Dummy upload handlers
+  
   const handleImageUpload = () => {
-    // Replace with real image picker
     setOutputImages([...outputImages, 'https://placehold.co/80x80']);
   };
 
-  const handlePDFUpload = () => {
-    // Replace with real file picker
-    setOutputPDFs([...outputPDFs, 'Sample.pdf']);
-  };
 
-  const handleSubmit = () => {
-    if (!userPrompt.trim()) {
-      Alert.alert('Validation', 'User prompt is required.');
+
+  const handleSubmit = async () => {
+
+    if (!promptTitle.trim()) {
+      Toast.show({
+          type:'error',
+          text1:'Enter all the details',
+          text2:'Prompt Title is required '
+        })
       return;
     }
-    setSubmitted(true);
-    setTimeout(() => setSubmitted(false), 2500);
-    // Here you would send the data to your backend
+    if (!promptDescription.trim()) {
+      Toast.show({
+          type:'error',
+          text1:'Enter all the details',
+          text2:'Prompt Description is required '
+        })
+      return;
+    }
+
+    if (!userPrompt.trim()) {
+      Toast.show({
+          type:'error',
+          text1:'Enter all the details',
+          text2:'User prompt is required '
+        })
+      return;
+    }
+       
+  try {
+
+    const priceFloat = parseFloat(price);
+      const promptData = {
+         promptTitle,
+         promptDescription,
+         userPrompt,
+         systemPrompt,
+         selectedCategory,
+         selectedModel,
+         isFree,
+         price:priceFloat,
+         outputText,
+         outputImages
+      }
+      const response = await MarketPlaceService.AddPrompt(promptData)
+      if(response.success){
+        Toast.show({
+          type:'success',
+          text1:'Prompt added successfully',
+          text2:'Your prompt has been added to the market!'
+        })
+      }
+
+      setPromptTitle('');
+      setOutputImages([])
+      setIsFree(false);
+      setOutputText('')
+      setPromptDescription('')
+      setSelectedCategory(CATEGORIES[0])
+      setSystemPrompt('')
+      setUserPrompt('')
+      setIsFree(true)
+      setSelectedModel(MODELS[0].value)
+
+  } catch (error:any) {
+
+    Toast.show({
+      type:'error',
+      text1:'failed to add prompt',
+      text2:error.message
+    })
+  }
+    
   };
 
   return (
@@ -70,8 +131,39 @@ export default function AddPromptScreen() {
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           <Text style={styles.title}>Add Your Prompt</Text>
 
-          {/* User Prompt */}
+             <View style={styles.section}>
+            <View>
+
+            <Text style={styles.label}>Prompt Title <Text style={{color:'#EF4444'}}>*</Text></Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter prompt title..."
+              value={promptTitle}
+              onChangeText={setPromptTitle}
+              multiline
+              maxLength={500}
+              placeholderTextColor="#94A3B8"
+            />
+            </View>
+
+            <View style={{marginTop:5}}>
+            <Text style={styles.label}>Prompt Description <Text style={{color:'#EF4444'}}>*</Text> </Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter system prompt (optional)..."
+              value={promptDescription}
+              onChangeText={setPromptDescription}
+              multiline
+              maxLength={500}
+              placeholderTextColor="#94A3B8"
+            />
+            </View>
+          </View>
+
+          {/* User Prompt  and system prompt*/}
           <View style={styles.section}>
+            <View>
+
             <Text style={styles.label}>User Prompt <Text style={{color:'#EF4444'}}>*</Text></Text>
             <TextInput
               style={styles.input}
@@ -82,10 +174,8 @@ export default function AddPromptScreen() {
               maxLength={500}
               placeholderTextColor="#94A3B8"
             />
-          </View>
-
-          {/* System Prompt */}
-          <View style={styles.section}>
+            </View>
+            <View style={{marginTop:5}}>
             <Text style={styles.label}>System Prompt <Text style={styles.optional}>(optional)</Text></Text>
             <TextInput
               style={styles.input}
@@ -96,11 +186,13 @@ export default function AddPromptScreen() {
               maxLength={500}
               placeholderTextColor="#94A3B8"
             />
+            </View>
           </View>
 
           {/* Model Selection */}
           <View style={styles.section}>
-            <Text style={styles.label}>Model</Text>
+            <Text style={styles.label}>Model Used</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={styles.modelRow}>
               {MODELS.map((model) => (
                 <TouchableOpacity
@@ -122,6 +214,7 @@ export default function AddPromptScreen() {
                 </TouchableOpacity>
               ))}
             </View>
+            </ScrollView>
           </View>
 
           {/* Category Selection */}
@@ -169,6 +262,7 @@ export default function AddPromptScreen() {
                 <Text style={[styles.freeButtonText, !isFree && styles.freeButtonTextActive]}>Paid</Text>
               </TouchableOpacity>
               {!isFree && (
+
                 <TextInput
                   style={styles.priceInput}
                   placeholder="₹ Price"
@@ -189,10 +283,6 @@ export default function AddPromptScreen() {
                 <UploadCloud size={18} color="#6366F1" />
                 <Text style={styles.uploadButtonText}>Image</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.uploadButton} onPress={handlePDFUpload}>
-                <UploadCloud size={18} color="#6366F1" />
-                <Text style={styles.uploadButtonText}>PDF</Text>
-              </TouchableOpacity>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{marginTop: 8}}>
               <View style={{flexDirection: 'row', alignItems: 'center'}}>
@@ -202,11 +292,6 @@ export default function AddPromptScreen() {
                     source={{ uri: img }}
                     style={styles.outputImage}
                   />
-                ))}
-                {outputPDFs.map((pdf, idx) => (
-                  <View key={idx} style={styles.pdfBadge}>
-                    <Text style={styles.pdfBadgeText}>{pdf}</Text>
-                  </View>
                 ))}
               </View>
             </ScrollView>
@@ -221,19 +306,13 @@ export default function AddPromptScreen() {
             />
           </View>
 
-          {/* Submit Button */}
+          
           <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
             <PlusCircle size={20} color="#fff" />
             <Text style={styles.submitButtonText}>Submit Prompt</Text>
           </TouchableOpacity>
 
-          {/* Success Message */}
-          {submitted && (
-            <View style={styles.successBox}>
-              <CheckCircle2 size={28} color="#22C55E" />
-              <Text style={styles.successText}>Your prompt has been added to the market!</Text>
-            </View>
-          )}
+          
         </ScrollView>
       </SafeAreaView>
     </View>
@@ -242,20 +321,20 @@ export default function AddPromptScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFFFF' },
-  safeArea: { flex: 1 },
-  scrollContent: { paddingBottom: 40, paddingTop: 20 },
+  safeArea: { flex:1 },
+  scrollContent: { paddingBottom:44  },
   title: {
-    fontSize: 22,
+    fontSize: 20,
     color: '#1E293B',
     fontFamily: 'Inter-Bold',
     marginLeft: 24,
-    marginBottom: 18,
+    marginBottom: 5,
   },
   section: {
-    marginBottom: 14,
+    marginBottom: 8,
     marginHorizontal: 20,
     borderRadius: 12,
-    padding: 12,
+    padding: 8,
     backgroundColor: '#F8FAFC',
     borderWidth: 1,
     borderColor: '#E2E8F0',
@@ -281,12 +360,12 @@ const styles = StyleSheet.create({
     color: '#1E293B',
     fontFamily: 'Inter-Regular',
     minHeight: 44,
-    marginBottom: 2,
+    marginBottom: 1,
   },
   modelRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+    
+  
   },
   modelButton: {
     backgroundColor: '#E0E7FF',
@@ -294,13 +373,13 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 20,
     marginRight: 8,
-    marginBottom: 6,
+    marginBottom: 4,
   },
   modelButtonSelected: {
-    backgroundColor: '#6366F1',
+    backgroundColor: '#6941C6',
   },
   modelButtonText: {
-    color: '#6366F1',
+    color: '#6941C6',
     fontFamily: 'Inter-Medium',
     fontSize: 14,
   },
@@ -309,7 +388,6 @@ const styles = StyleSheet.create({
   },
   categoryRow: {
     flexDirection: 'row',
-    gap: 8,
   },
   categoryButton: {
     backgroundColor: '#E0E7FF',
@@ -317,13 +395,13 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 20,
     marginRight: 8,
-    marginBottom: 6,
+    marginBottom: 4,
   },
   categoryButtonSelected: {
-    backgroundColor: '#6366F1',
+    backgroundColor: '#6941C6',
   },
   categoryButtonText: {
-    color: '#6366F1',
+    color: '#6941C6',
     fontFamily: 'Inter-Medium',
     fontSize: 14,
   },
@@ -333,7 +411,6 @@ const styles = StyleSheet.create({
   priceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
   },
   freeButton: {
     backgroundColor: '#E0E7FF',
@@ -343,10 +420,10 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   freeButtonActive: {
-    backgroundColor: '#6366F1',
+    backgroundColor: '#6941C6',
   },
   freeButtonText: {
-    color: '#6366F1',
+    color: '#6941C6',
     fontFamily: 'Inter-Medium',
     fontSize: 14,
   },
@@ -358,17 +435,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E2E8F0',
     borderRadius: 8,
-    padding: 8,
+    padding: 4,
     fontSize: 15,
-    color: '#1E293B',
+    color: '#6941C6',
     fontFamily: 'Inter-Regular',
     width: 80,
     marginLeft: 4,
   },
   outputRow: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 4,
   },
   uploadButton: {
     flexDirection: 'row',
@@ -380,7 +455,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   uploadButtonText: {
-    color: '#6366F1',
+    color: '#6941C6',
     fontFamily: 'Inter-Medium',
     fontSize: 14,
     marginLeft: 4,
@@ -408,19 +483,18 @@ const styles = StyleSheet.create({
   submitButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#6366F1',
+    backgroundColor: '#6941C6',
     borderRadius: 24,
-    paddingVertical: 14,
+    paddingVertical: 12,
     justifyContent: 'center',
     marginHorizontal: 40,
-    marginTop: 18,
-    marginBottom: 10,
-    gap: 8,
+    marginTop: 2,
+    gap: 12,
   },
   submitButtonText: {
     color: '#fff',
     fontFamily: 'Inter-SemiBold',
-    fontSize: 16,
+    fontSize: 14,
   },
   successBox: {
     flexDirection: 'row',

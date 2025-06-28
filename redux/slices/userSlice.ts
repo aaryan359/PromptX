@@ -22,8 +22,6 @@ const initialState: UserState = {
   subscriptionType: null,
 };
 
-
-
 // Thunks
 export const loadUser = createAsyncThunk(
   'user/loadUser',

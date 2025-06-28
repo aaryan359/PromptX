@@ -65,9 +65,8 @@ export default function PromptCard({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 16,
-  },
-  card: {
+    marginTop:5,
+    marginBottom: 10,
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 16,
@@ -78,6 +77,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
+  },
+  card: {
+  
+    
   },
   header: {
     flexDirection: 'row',

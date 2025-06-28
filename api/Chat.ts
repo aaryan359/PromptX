@@ -4,7 +4,6 @@ export const ChatService = {
    async getChatHistory() {
       const response = await apiClient.get('/api/v1/chat/history');
       return response.data;
-  
   },
 
   async sendMessage(request:any) {
