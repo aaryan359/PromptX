@@ -31,8 +31,8 @@ interface Message {
 interface ChatHistoryItem {
   id: number;
   systemPrompt?: string;
-  userPrompt: string;
   aiResponse: string;
+  userPrompt: string;
   createdAt: Date;
 }
 
@@ -96,6 +96,7 @@ export default function ChatScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
   const systemPromptCache = useRef<{ [promptId: string]: boolean }>({});
+  const [referesh,setRefresh] = useState(false);
 
   // Load chat history on initial render
  useEffect(() => {
@@ -112,22 +113,29 @@ export default function ChatScreen() {
         const response = await ChatService.getChatHistory();
         
         if (response.data && response.data.chats) {
-          const historyMessages = response.data.chats.flatMap((chat: ChatHistoryItem) => [
+        // Process messages in correct order (user first, then assistant)
+        const historyMessages = response.data.chats.reduce((acc: Message[], chat: ChatHistoryItem) => {
+          return [
+            ...acc,
+            {
+              id: `ai-${chat.id}`,
+              content: formatLLMResponse(chat.aiResponse), 
+              role: 'assistant' as const,
+              timestamp: new Date(chat.createdAt),
+              systemPrompt: chat.systemPrompt
+            },
             {
               id: `user-${chat.id}`,
               content: chat.userPrompt,
               role: 'user' as const,
               timestamp: new Date(chat.createdAt),
-            },
-            {
-              id: `ai-${chat.id}`,
-              content: chat.aiResponse,
-              role: 'assistant' as const,
-              timestamp: new Date(chat.createdAt),   
+              systemPrompt: chat.systemPrompt
             }
-          ]).reverse();
+            
+          ];
+        }, []).reverse();
           
-          // Only show welcome message if no history exists
+          
           setMessages(historyMessages.length > 0 ? historyMessages : [welcomeMessage]);
         } else {
           setMessages([welcomeMessage]);
@@ -142,7 +150,7 @@ export default function ChatScreen() {
         });
       } finally {
         setRefreshing(false);
-        // Scroll to bottom after all messages are set
+        
         setTimeout(() => {
           scrollViewRef.current?.scrollToEnd({ animated: true });
         }, 100);
@@ -150,16 +158,8 @@ export default function ChatScreen() {
     };
 
     loadInitialData();
-  }, []);
+  }, [referesh]);
 
-
-
-
-  useEffect(() => {
-  if (messages.length > 0) {
-    scrollViewRef.current?.scrollToEnd({ animated: true });
-  }
-}, [messages]);
 
   const handleSendMessage = async () => {
     if (!inputText.trim()) return;
@@ -232,7 +232,8 @@ export default function ChatScreen() {
       setIsLoading(false);
     }
   };
-   useEffect(() => {
+  
+  useEffect(() => {
     if (messages.length > 0) {
       const timer = setTimeout(() => {
         scrollViewRef.current?.scrollToEnd({ animated: true });
@@ -241,10 +242,12 @@ export default function ChatScreen() {
     }
   }, [messages]);
 
+
   // Reset cache when prompt changes
   useEffect(() => {
     systemPromptCache.current[selectedPrompt.id] = false;
   }, [selectedPrompt.id]);
+
 
   const handleShowMorePrompts = () => {
     if (!hasSubscription) {
@@ -258,6 +261,8 @@ export default function ChatScreen() {
     setShowAllPrompts(true);
   };
 
+
+
   const defaultVisiblePrompts = [systemPrompts[4], systemPrompts[0]];
 
   const visiblePrompts = showAllPrompts 
@@ -268,13 +273,14 @@ export default function ChatScreen() {
     <LinearGradient colors={['#F5F7FF', '#E8ECFF']} style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <KeyboardAvoidingView
-          style={{ flex: 1 }}
+          style={{ flex: 1, paddingBottom:30}}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 10}
         >
           <CustomHeader />
-          
-          <View style={styles.promptsContainer}>
+
+          <View>  
+              <View style={styles.promptsContainer}>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -310,6 +316,7 @@ export default function ChatScreen() {
                 </TouchableOpacity>
               )}
             </ScrollView>
+              </View>
           </View>
 
           {/* Chat Messages with pull-to-refresh */}
@@ -317,12 +324,13 @@ export default function ChatScreen() {
             ref={scrollViewRef}
             style={styles.messagesContainer}
             contentContainerStyle={styles.messagesContent}
+            
             onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
-               
-                colors={['#8B5CF6']}
+                onRefresh={() => setRefresh(prev => !prev)}
+                  colors={['#8B5CF6']}
                 tintColor={'#8B5CF6'}
               />
             }
@@ -374,16 +382,14 @@ export default function ChatScreen() {
   );
 }
 
-// ... (keep your existing styles)
-
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     	backgroundColor: "#F8FAFC",
   },
   safeArea: {
     flex: 1,
     backgroundColor: "#F8FAFC",
+    
   },
   promptsContainer: {
     maxHeight: 50,
@@ -413,7 +419,6 @@ const styles = StyleSheet.create({
     marginLeft: 4
   },
   messagesContainer: {
-    flex: 1,
     paddingHorizontal: 15,
 
   },

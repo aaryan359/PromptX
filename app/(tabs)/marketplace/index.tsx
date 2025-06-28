@@ -1,11 +1,13 @@
 import { MarketPlaceService } from '@/api/MarketPlace';
 import CustomHeader from '@/components/CustomHeader';
+import FilterModal from '@/components/FilterModal';
 import PromptCard from '@/components/PromptCard';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Filter, Search, TrendingUp } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   Modal,
   ScrollView,
   StyleSheet,
@@ -31,6 +33,8 @@ interface Prompt {
   likesCount:number
   author: Author;
   content: string;
+  outputImage : [];
+  outputText :string,
 }
 
 const categories = [
@@ -53,11 +57,19 @@ export default function MarketplaceScreen() {
   const [likedPrompts, setLikedPrompts] = useState<Set<string>>(new Set());
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [currentFilters, setCurrentFilters] = useState({
+                                                       sortBy: 'newest',
+                                                       price: 'all',
+                                                       rating: 'all',
+                                                       category: 'All'
+                                                          });
 
   const fetchPrompts = async () => {
     setLoading(true);
     try {
       const respons = await MarketPlaceService.getPromptByQuery(selectedCategory);
+      console.log("promtp from backend is",respons.data);
       setPrompts(respons.data);
     } catch (error: any) {
       if (error?.response?.status === 429) {
@@ -100,6 +112,8 @@ export default function MarketplaceScreen() {
     });
   };
 
+
+
   const handleUsePrompt = () => {
     setShowPromptModal(false);
   };
@@ -109,6 +123,7 @@ export default function MarketplaceScreen() {
     // console.log('Purchase prompt:', selectedPrompt?.id);
     setShowPromptModal(false);
   };
+ 
 
   return (
     <LinearGradient colors={['#F5F7FF', '#E8ECFF']} style={styles.container}>
@@ -126,9 +141,12 @@ export default function MarketplaceScreen() {
               onChangeText={setSearchQuery}
             />
           </View>
-          <TouchableOpacity style={styles.filterButton}>
-            <Filter size={20} color="#8B5CF6" />
-          </TouchableOpacity>
+         <TouchableOpacity 
+  style={styles.filterButton}
+  onPress={() => setShowFilterModal(true)}
+>
+  <Filter size={20} color="#8B5CF6" />
+</TouchableOpacity>
         </View>
 
         <ScrollView
@@ -206,20 +224,40 @@ export default function MarketplaceScreen() {
         >
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
+              <View style={styles.modalHandle} />
+
               <ScrollView style={styles.modalScroll}>
                 <Text style={styles.modalTitle}>{selectedPrompt?.title}</Text>
-                <Text style={styles.modalCategory}>{selectedPrompt?.category}</Text>
+                <View style={styles.modalCategory}>
+                <Text style={styles.modelCategoryText}>{selectedPrompt?.category}</Text>
+                </View>
                 <Text style={styles.modalDescription}>{selectedPrompt?.description}</Text>
 
-                <View style={styles.modalStats}>
-                  <Text style={styles.modalAuthor}>By {selectedPrompt?.author.name}</Text>
-                  <Text style={styles.modalRating}>★ {selectedPrompt?.rating}</Text>
-                </View>
+                          <View style={styles.section}>
 
-                <View style={styles.promptPreview}>
-                  <Text style={styles.previewTitle}>Prompt Preview:</Text>
-                  <Text style={styles.previewContent}>{selectedPrompt?.content}</Text>
-                </View>
+                                 <Text style={ styles.sectionTitle }> Text Output </Text>
+
+                                 <View style={styles.menuItem}>
+                                       <Text style={ styles.menuText }>
+                                               {
+                                                selectedPrompt?.outputText
+                                               }
+                                        </Text>
+                                 </View>
+                          </View>
+                          <View style={styles.section}>
+
+                                 <Text style={ styles.sectionTitle }> Text Output </Text>
+
+                                 <View style={styles.menuItem}>
+                                   {
+                                    selectedPrompt?.outputImage && <Image source={selectedPrompt?.outputImage}  style={ styles.menuText }>
+                                                
+                                        </Image>
+                                  }
+                                        
+                                 </View>
+                          </View>
               </ScrollView>
 
               <View style={styles.modalActions}>
@@ -249,6 +287,17 @@ export default function MarketplaceScreen() {
             </View>
           </View>
         </Modal>
+
+        <FilterModal
+  visible={showFilterModal}
+  onClose={() => setShowFilterModal(false)}
+  onApply={(filters:any) => {
+    setCurrentFilters(filters);
+    // Here you would typically refetch data with the new filters
+    // For example: fetchPromptsWithFilters(filters);
+  }}
+  currentFilters={currentFilters}
+/>
       </SafeAreaView>
     </LinearGradient>
   );
@@ -282,6 +331,14 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     marginTop:5,
     gap:5
+  },
+  modalHandle: {
+    width: 40,
+    height: 5,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 3,
+    alignSelf: 'center',
+    marginTop: 5,
   },
   searchBox: {
     flex: 1,
@@ -392,7 +449,8 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
   },
   modalScroll: {
-    padding: 20,
+    paddingHorizontal:20,
+    paddingVertical:10
   },
   modalTitle: {
     color: '#1E293B',
@@ -401,22 +459,33 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   modalCategory: {
-    color: '#8B5CF6',
+    backgroundColor: '#8B5CF6',
+    borderColor: '#7C3AED',
+    maxHeight: 35,
+    width:'30%',
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+  
+  },
+  modelCategoryText:{
+    color: '#FFFFFF',
     fontSize: 14,
     fontFamily: 'Inter-Medium',
-    marginBottom: 16,
+    alignSelf:'center'
   },
+
   modalDescription: {
     color: '#475569',
     fontSize: 16,
     fontFamily: 'Inter-Regular',
     lineHeight: 24,
-    marginBottom: 16,
+    marginBottom: 5,
   },
   modalStats: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    marginBottom: 10,
   },
   modalAuthor: {
     color: '#64748B',
@@ -428,26 +497,84 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Inter-Medium',
   },
-  promptPreview: {
-    backgroundColor: '#F8FAFC',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  previewTitle: {
-    color: '#1E293B',
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    marginBottom: 8,
-  },
-  previewContent: {
-    color: '#475569',
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    lineHeight: 20,
-  },
+ promptPreview: {
+  backgroundColor: '#F8FAFC',
+  borderRadius: 12,
+  padding: 16,
+  marginBottom: 20,
+  borderWidth: 1,
+  borderColor: '#E2E8F0',
+},
+previewTitle: {
+  color: '#1E293B',
+  fontSize: 16,
+  fontFamily: 'Inter-SemiBold',
+  marginBottom: 8,
+},
+previewContent: {
+  color: '#475569',
+  fontSize: 14,
+  fontFamily: 'Inter-Regular',
+  lineHeight: 20,
+},
+
+	section: {
+		marginBottom: 10,
+		borderRadius: 12,
+		padding: 10,
+		backgroundColor: "#F8FAFC",
+		borderWidth: 1,
+		borderColor: "#E2E8F0",
+	},
+	sectionTitle: {
+		color: "#1E293B",
+		fontSize: 16,
+		fontFamily: "Inter-SemiBold",
+		marginBottom: 8,
+	},
+	menuItem: {
+		flexDirection: "row",
+		alignItems: "center",
+		paddingVertical: 8,
+		paddingHorizontal: 4,
+		borderRadius: 8,
+		marginBottom: 4,
+		backgroundColor: "#FFFFFF",
+		borderWidth: 1,
+		borderColor: "#E2E8F0",
+	},
+	menuText: {
+		color: "#1E293B",
+		fontSize: 15,
+		fontFamily: "Inter-Medium",
+		marginLeft: 12,
+		flex: 1,
+	},
+paywallContainer: {
+  backgroundColor: '#F1F5F9',
+  borderRadius: 8,
+  padding: 16,
+  alignItems: 'center',
+},
+paywallText: {
+  color: '#64748B',
+  fontSize: 14,
+  fontFamily: 'Inter-Medium',
+  marginBottom: 12,
+},
+subscribeButton: {
+  width: '100%',
+},
+subscribeButtonGradient: {
+  paddingVertical: 10,
+  borderRadius: 8,
+  alignItems: 'center',
+},
+subscribeButtonText: {
+  color: '#FFFFFF',
+  fontFamily: 'Inter-SemiBold',
+  fontSize: 14,
+},
   modalActions: {
     flexDirection: 'row',
     paddingHorizontal: 20,
