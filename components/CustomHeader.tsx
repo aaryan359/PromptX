@@ -1,13 +1,12 @@
+import { useAppSelector } from '@/redux/hook';
+import { RootState } from '@/redux/store';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const CustomHeader = () => {
-    // Replace with your actual user data
-    const user = {
-        name: "John Doe",
-        imageUrl: null, // Set to null for placeholder
-    };
+
+    const user  = useAppSelector((state:RootState)=>state.user)
 
     return (
         <View style={styles.headerContainer}>
@@ -25,9 +24,9 @@ const CustomHeader = () => {
                     <Ionicons name="search" size={20} color="#6941C6" />
                 </TouchableOpacity>
                 
-                {user.imageUrl ? (
+                {user.profilePicture ? (
                     <Image 
-                        source={{ uri: user.imageUrl }} 
+                        source={{ uri: user.profilePicture }} 
                         style={styles.profileImage}
                     />
                 ) : (

@@ -1,6 +1,6 @@
-
 import { useAppDispatch } from "@/redux/hook";
-import { register } from "@/redux/slices/authSlice";
+import { googleOauth, register } from "@/redux/slices/authSlice";
+import { googleLogin } from "@/utils/GoogleSiginIn";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -17,10 +17,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
-
 export default function AuthScreen() {
-    const dispatch = useAppDispatch();
-	
+	const dispatch = useAppDispatch();
 
 	const router = useRouter();
 
@@ -30,16 +28,44 @@ export default function AuthScreen() {
 	const [password, setPassword] = useState("");
 	const [name, setName] = useState("");
 
-	
 	const handleGoogleSignIn = async () => {
-		
-	};
+		try {
+			setLoading(true);
 
+			console.log("Starting Google Sign-In");
+			const { idToken, user } = await googleLogin();
+			console.log(" id toke and user is", idToken, user);
+
+			const result = await dispatch(googleOauth({ idToken, user}));
+
+			console.log(" result of google auth is", result);
+
+			if (googleOauth.fulfilled.match(result)) {
+				Toast.show({
+					type: "success",
+					text1: "Success",
+					text2: "registe successful!",
+					position: "top",
+				});
+			}
+			setLoading(false);
+		} catch (err: any) {
+			console.error("Google Sign-In Error:", err);
+			Toast.show({
+				type:'error',
+				text1:'Google Auth Failed',
+				text2:err.errors[0].message
+
+			})
+		} finally {
+			setLoading(false);
+		}
+	};
 
 	const HandleRegisterWithEmail = async () => {
 		try {
 			setLoading(true);
-			if(!email || !password || !name) {
+			if (!email || !password || !name) {
 				Toast.show({
 					type: "error",
 					text1: "Error",
@@ -48,11 +74,13 @@ export default function AuthScreen() {
 				return;
 			}
 
-		   const response  = await	dispatch(register({
-				email,
-				password,
-				name,
-			}));
+			const response = await dispatch(
+				register({
+					email,
+					password,
+					name,
+				})
+			);
 
 			response.payload = response.payload as any;
 			if (response.payload?.token) {
@@ -61,7 +89,6 @@ export default function AuthScreen() {
 					text1: "Registration Successful",
 					text2: "You can now login",
 				});
-				
 			} else if (response.payload?.message) {
 				Toast.show({
 					type: "error",
@@ -70,19 +97,14 @@ export default function AuthScreen() {
 				});
 				return;
 			}
-			
 
-			;
-			
-            setLoading(false);
-			
+			setLoading(false);
 		} catch (error: any) {
 			Alert.alert("Error", error.message);
 		} finally {
 			setLoading(false);
 		}
 	};
-
 
 	return (
 		<SafeAreaView style={styles.safeArea}>

@@ -77,19 +77,26 @@ export const register = createAsyncThunk(
 
 
 
-export const googleLogin = createAsyncThunk(
+export const googleOauth = createAsyncThunk(
   'auth/googleLogin',
-  async (token: string, { rejectWithValue }) => {
+  async (
+    { idToken, user }: { idToken: string; user: any },{dispatch}
+  ) => {
     try {
-      // Replace with actual Google auth API call
-      const response = { token, user: { id: '1', name: 'Google User' } };
-      await storeToken(response.token);
-      return { token: response.token, user: response.user };
+      const response = await AuthService.googleLogin(idToken, user);
+      console.log("response data",response)
+      await storeToken(response.data.token);
+      dispatch(setUser(response.data.user));
+      return { token: response.data.token, user: response.data.user };
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Google login failed');
-    }
+      Toast.show({
+        type: 'error',
+        text1: 'Google Sigin Failed',
+        text2: error.response?.data?.message,
+      });
+      }
   }
-);
+)
 
 export const logout = createAsyncThunk(
   'auth/logout',
@@ -165,17 +172,17 @@ const authSlice = createSlice({
       })
 
       
-      .addCase(googleLogin.pending, (state) => {
+      .addCase(googleOauth.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(googleLogin.fulfilled, (state, action) => {
-        state.token = action.payload.token;
+      .addCase(googleOauth.fulfilled, (state, action) => {
+        state.token = action.payload?.token;
         state.isAuthenticated = true;
         state.loading = false;
         state.error = null;
       })
-      .addCase(googleLogin.rejected, (state, action) => {
+      .addCase(googleOauth.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       })
@@ -218,7 +225,8 @@ const authSlice = createSlice({
         state.loading = false;
         state.isAuthenticated = false;
         state.error = action.payload as string;
-      });
+      })
+      
     }
 
 });

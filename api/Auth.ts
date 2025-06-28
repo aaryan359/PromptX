@@ -19,14 +19,11 @@ export const AuthService = {
     },
 
     async googleLogin(idToken: string, user: any) {
-        try {
-            const response = await apiClient.post("/api/v1/users/auth/google", { idToken });
+            const response = await apiClient.post("/api/v1/users/auth/google", { idToken ,user});
             return response.data;
-        } catch (error: any) {
-            console.error("Google Login Error:", error);
-            throw error.response?.data || error;
-        }
     },
+
+
     forgotPassword: async (email: string) => {
         try {
             const response = await apiClient.post("/api/v1/users/forgot-password", { email });

@@ -6,7 +6,7 @@ export interface UserState {
   id: string | null;
   name: string | null;
   email: string | null;
-  profile: string | null;
+  profilePicture: string | null;
   savedPrompts: number | null;
   createdPrompts: number | null;
   subscriptionType: string | null;
@@ -16,7 +16,7 @@ const initialState: UserState = {
   id: null,
   name: null,
   email: null,
-  profile: null,
+  profilePicture: null,
   savedPrompts: null,
   createdPrompts: null,
   subscriptionType: null,

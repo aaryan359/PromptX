@@ -4,7 +4,8 @@ import { useRef } from 'react';
 import { Animated, Platform, Pressable, View } from 'react-native';
 
 export default function TabLayout() {
- 
+  
+
   const animationValues = {
     index: useRef(new Animated.Value(0)).current,
     marketplace: useRef(new Animated.Value(0)).current,

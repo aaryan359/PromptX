@@ -4,7 +4,7 @@ import { UserState } from "../slices/userSlice";
 
 export const storeUserData = async (userData: UserState) => {
   try {
-    
+    console.log(" user store successfully",userData)
     await SecureStore.setItemAsync('userData', JSON.stringify(userData));
   } catch (error) {
     console.error('Error storing user data:', error);
