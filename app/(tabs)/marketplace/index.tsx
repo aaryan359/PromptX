@@ -360,7 +360,7 @@ useEffect(() => {
               
           
 
-                 {selectedPrompt?.isActivate || selectedPrompt?.price == 0  && (selectedPrompt.userPrompt.trim())&& (
+                 {selectedPrompt?.isActivate   && (selectedPrompt.userPrompt.trim())&& (
                   <View style={styles.section}>
                     <Text style={styles.sectionTitle}>User Prompt</Text>
                     <View style={styles.menuItem}>
@@ -377,7 +377,7 @@ useEffect(() => {
                     </View>
                   </View>
                 )}
-                {selectedPrompt?.isActivate || selectedPrompt?.price == 0 && (selectedPrompt.systemPrompt.trim()) && (
+                {selectedPrompt?.isActivate  && (selectedPrompt.systemPrompt.trim()) && (
                   <View style={styles.section}>
                     <Text style={styles.sectionTitle}>System Prompt</Text>
                     <View style={styles.menuItem}>
