@@ -4,7 +4,6 @@ import { GoogleSignin } from '@react-native-google-signin/google-signin';
 
 export const configureGoogleSignIn = () => {
 	console.log("google sigin in configred")
-	console.log(" clied id",process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID)
 	GoogleSignin.configure({
 		webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
 	});

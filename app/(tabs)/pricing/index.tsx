@@ -2,19 +2,19 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Check, Crown, Star, Zap } from 'lucide-react-native';
 import React, { useEffect, useRef } from 'react';
 import {
-    Dimensions,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Dimensions,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const { width } = Dimensions.get('window');
-const CARD_WIDTH = width * 0.65; 
-const CARD_MARGIN = width * 0.001;
-const PEEK_WIDTH = width * 0.12;
+const { width, height } = Dimensions.get('window');
+const CARD_WIDTH = Math.min(width * 0.8, 350); // Max width of 350 for larger screens
+const CARD_MARGIN = width * 0.02;
+const PEEK_WIDTH = width * .1;
 
 const pricingPlans = [
   {
@@ -80,9 +80,8 @@ const pricingPlans = [
 ];
 
 export default function PricingScreen() {
-
-
   const scrollViewRef = useRef<ScrollView>(null);
+  
   useEffect(() => {
     // Scroll to the second card (Premium) when component mounts
     setTimeout(() => {
@@ -92,7 +91,6 @@ export default function PricingScreen() {
       });
     }, 50);
   }, []);
-
 
   const handlePlanSelect = (planId: string) => {
     console.log('Selected plan:', planId);
@@ -127,7 +125,7 @@ export default function PricingScreen() {
                       marginHorizontal: CARD_MARGIN,
                       // Scale down non-center cards slightly
                       transform: [
-                        { translateY: index === 1 ? -20 : 0 },
+                        { translateY: index === 1 ? -height * 0.025 : 0 },
                         { scale: index === 1 ? 1 : 0.95 }
                       ],
                     }
@@ -145,7 +143,7 @@ export default function PricingScreen() {
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                   >
-                    <plan.icon size={32} color="#FFFFFF" />
+                    <plan.icon size={width * 0.08} color="#FFFFFF" />
                     <Text style={styles.planName}>{plan.name}</Text>
                     <View style={styles.priceContainer}>
                       <Text style={styles.price}>{plan.price}</Text>
@@ -158,7 +156,7 @@ export default function PricingScreen() {
                     <View style={styles.featuresContainer}>
                       {plan.features.map((feature, i) => (
                         <View key={i} style={styles.featureRow}>
-                          <Check size={16} color="#10B981" />
+                          <Check size={width * 0.04} color="#10B981" />
                           <Text style={styles.featureText}>{feature}</Text>
                         </View>
                       ))}
@@ -184,8 +182,10 @@ export default function PricingScreen() {
                   </View>
                 </View>
               ))}
+              
             </ScrollView>
           </View>
+          
           <View style={styles.faqContainer}>
             <Text style={styles.faqTitle}>Frequently Asked Questions</Text>
             
@@ -223,186 +223,191 @@ export default function PricingScreen() {
 }
 
 const styles = StyleSheet.create({
-   container: {
+  container: {
     flex: 1,
     backgroundColor: '#F5F7FF',
   },
   safeArea: {
     flex: 1,
-    marginTop:10
+    marginTop: height * 0.012,
   },
   scrollContent: {
-    paddingBottom: 40,
-
+    paddingBottom: height * 0.05,
   },
   carouselContainer: {
     width: '100%',
-  
   },
   header: {
-    paddingHorizontal: 10,
-    paddingVertical: 10,
+    paddingHorizontal: width * 0.025,
+    paddingVertical: height * 0.012,
     alignItems: 'center',
   },
   title: {
     color: '#1E293B',
-    fontSize: 28,
+    fontSize: Math.max(width * 0.07, 24),
     fontFamily: 'Inter-Bold',
     textAlign: 'center',
   },
   subtitle: {
     color: '#64748B',
-    fontSize: 16,
+    fontSize: Math.max(width * 0.04, 14),
     fontFamily: 'Inter-Regular',
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: width * 0.05,
   },
   horizontalScroll: {
-    paddingVertical: 20,
+    paddingVertical: height * 0.025,
     alignItems: 'center',
   },
   planCard: {
-    borderRadius: 20,
+    borderRadius: width * 0.05,
     backgroundColor: '#FFFFFF',
     overflow: 'hidden',
     position: 'relative',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
+    shadowOffset: { width: 0, height: height * 0.012 },
     shadowOpacity: 0.1,
-    shadowRadius: 20,
+    shadowRadius: width * 0.05,
     elevation: 5,
     borderWidth: 1,
     borderColor: '#E2E8F0',
+    minHeight: height * 0.65,
   },
   highlightedCard: {
     shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 15 },
+    shadowOffset: { width: 0, height: height * 0.018 },
     shadowOpacity: 0.2,
-    shadowRadius: 25,
+    shadowRadius: width * 0.06,
     elevation: 10,
   },
-
   popularBadge: {
     position: 'absolute',
-    top: 16,
-    right: 16,
+    top: height * 0.02,
+    right: width * 0.04,
     backgroundColor: '#EF4444',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: width * 0.03,
+    paddingVertical: height * 0.005,
+    borderRadius: width * 0.03,
     zIndex: 1,
   },
   popularText: {
     color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: Math.max(width * 0.03, 10),
     fontFamily: 'Inter-Bold',
   },
   planHeader: {
-    padding: 5,
+    padding: width * 0.04,
     alignItems: 'center',
+    minHeight: height * 0.25,
+    justifyContent: 'center',
   },
   planName: {
     color: '#FFFFFF',
-    fontSize: 22,
+    fontSize: Math.max(width * 0.055, 18),
     fontFamily: 'Inter-Bold',
-
+    marginTop: height * 0.01,
   },
   priceContainer: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    
+    marginTop: height * 0.005,
   },
   price: {
     color: '#FFFFFF',
-    fontSize: 32,
+    fontSize: Math.max(width * 0.08, 28),
     fontFamily: 'Inter-Bold',
   },
   period: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: Math.max(width * 0.035, 12),
     fontFamily: 'Inter-Regular',
     opacity: 0.9,
-    marginLeft: 4,
+    marginLeft: width * 0.01,
   },
   description: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: Math.max(width * 0.035, 12),
     fontFamily: 'Inter-Regular',
     opacity: 0.7,
     textAlign: 'center',
+    marginTop: height * 0.005,
   },
   planBody: {
-    padding: 10,
+    padding: width * 0.04,
+    flex: 1,
+    justifyContent: 'space-between',
   },
   featuresContainer: {
+    flex: 1,
   },
   featureRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 8,
+    marginBottom: height * 0.01,
   },
   featureText: {
     color: '#475569',
-    fontSize: 13,
+    fontSize: Math.max(width * 0.032, 12),
     fontFamily: 'Inter-Regular',
-    marginLeft: 10,
+    marginLeft: width * 0.025,
     flex: 1,
-    lineHeight: 20,
+    lineHeight: height * 0.024,
   },
   selectButton: {
-    borderRadius: 12,
+    borderRadius: width * 0.03,
     overflow: 'hidden',
+    marginTop: height * 0.02,
   },
   selectGradient: {
-    paddingVertical: 14,
+    paddingVertical: height * 0.017,
     alignItems: 'center',
-    borderRadius: 12,
+    borderRadius: width * 0.03,
   },
   selectButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: Math.max(width * 0.04, 14),
     fontFamily: 'Inter-SemiBold',
   },
   faqContainer: {
-    paddingHorizontal: 24,
-    marginTop:-10
+    paddingHorizontal: width * 0.06,
+    marginTop: height * 0.02,
   },
   faqTitle: {
     color: '#1E293B',
-    fontSize: 22,
+    fontSize: Math.max(width * 0.055, 18),
     fontFamily: 'Inter-Bold',
-    marginBottom: 5,
+    marginBottom: height * 0.02,
     textAlign: 'left',
   },
   faqItem: {
-    marginBottom: 5,
+    marginBottom: height * 0.015,
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 10,
+    borderRadius: width * 0.03,
+    padding: width * 0.04,
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
   faqQuestion: {
     color: '#1E293B',
-    fontSize: 16,
+    fontSize: Math.max(width * 0.04, 14),
     fontFamily: 'Inter-SemiBold',
-    marginBottom: 2,
+    marginBottom: height * 0.005,
   },
   faqAnswer: {
     color: '#64748B',
-    fontSize: 14,
+    fontSize: Math.max(width * 0.035, 12),
     fontFamily: 'Inter-Regular',
-    lineHeight: 20,
+    lineHeight: height * 0.024,
   },
   footer: {
-    paddingHorizontal: 24,
+    paddingHorizontal: width * 0.06,
     alignItems: 'center',
+    marginTop: height * 0.02,
   },
   footerText: {
     color: '#64748B',
-    fontSize: 10,
+    fontSize: Math.max(width * 0.025, 10),
     fontFamily: 'Inter-Regular',
     textAlign: 'center',
   },
-   
 });

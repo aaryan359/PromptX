@@ -36,5 +36,9 @@ export const AuthService = {
     checkAuthentication: async () => {
             const response = await apiClient.get("/api/v1/check");
             return response.data;
+    },
+    getUserStatistics:async()=>{
+        const response = await apiClient.get('/api/v1/users/getUserStatistics')
+        return response.data
     }
 }

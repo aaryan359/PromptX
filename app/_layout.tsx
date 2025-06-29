@@ -1,4 +1,3 @@
-import { AuthenticatedNavigation, AuthNavigation } from '@/components/Navigation';
 import { toastConfig } from '@/configs/toast-config';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { useAppDispatch, useAppSelector } from '@/redux/hook';
@@ -7,6 +6,7 @@ import { store } from '@/redux/store';
 import { configureGoogleSignIn } from '@/utils/GoogleSiginIn';
 import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import { useFonts } from 'expo-font';
+import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import Toast from 'react-native-toast-message';
@@ -15,21 +15,17 @@ import { Provider } from 'react-redux';
 SplashScreen.preventAutoHideAsync();
 
 function AppContent() {
-
+  
   useFrameworkReady();
-
   const dispatch = useAppDispatch();
-   let { isAuthenticated, loading } = useAppSelector((state) => state.auth);
+  const { isAuthenticated, loading } = useAppSelector((state) => state.auth);
 
   useEffect(() => {
-    configureGoogleSignIn();
-    dispatch(checkAuth()),
-    setTimeout(()=>{
-      
-    },500)
-  }, [dispatch]);
-
   
+      configureGoogleSignIn();
+      dispatch(checkAuth());
+  
+  }, [dispatch]);
 
   const [fontsLoaded, fontError] = useFonts({
     'Inter-Regular': Inter_400Regular,
@@ -37,10 +33,11 @@ function AppContent() {
     'Inter-SemiBold': Inter_600SemiBold,
     'Inter-Bold': Inter_700Bold,
   });
-  
-console.log("is authenicated",isAuthenticated)
 
-  
+  console.log("Auth Debug:", {
+    isAuthenticated,
+    loading
+  });
 
   useEffect(() => {
     if (fontsLoaded || fontError) {
@@ -48,25 +45,36 @@ console.log("is authenicated",isAuthenticated)
     }
   }, [fontsLoaded, fontError]);
 
+  // Show loading screen while fonts are loading
   if (!fontsLoaded && !fontError) {
     return null;
   }
 
-  if (loading) {
-    return null; 
-  }
+
+  console.log('Rendering navigation - isAuthenticated:', isAuthenticated);
 
   return (
-    <>
-      {isAuthenticated ? <AuthenticatedNavigation /> : <AuthNavigation />}
-      <Toast 
-        config={toastConfig}
-        position="top"
-        visibilityTime={4000}
-        autoHide={true}
-      />
-    </>
-  );
+  <>
+    {isAuthenticated ? (
+      
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name='(tabs)' />
+      </Stack>
+        
+    ) : (
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name='(auth)' />
+      </Stack>
+    )}
+    <Toast
+      config={toastConfig}
+      position="top"
+      visibilityTime={4000}
+      autoHide={true}
+    />
+  </>
+     
+);
 }
 
 export default function RootLayout() {

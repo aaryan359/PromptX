@@ -273,10 +273,10 @@ export default function ChatScreen() {
     <LinearGradient colors={['#F5F7FF', '#E8ECFF']} style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <KeyboardAvoidingView
-          style={{ flex: 1, paddingBottom:30}}
+          style={{ flex: 1, paddingBottom:5}}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 10}
-        >
+          >
           <CustomHeader />
 
           <View>  
@@ -384,6 +384,7 @@ export default function ChatScreen() {
 
 const styles = StyleSheet.create({
   container: {
+    flex:1,
     	backgroundColor: "#F8FAFC",
   },
   safeArea: {
@@ -419,11 +420,14 @@ const styles = StyleSheet.create({
     marginLeft: 4
   },
   messagesContainer: {
+    
     paddingHorizontal: 15,
+    
 
   },
   messagesContent: {
     paddingBottom: 10,
+
   },
   loadingContainer: {
     alignItems: 'center',

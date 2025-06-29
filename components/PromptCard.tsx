@@ -3,7 +3,7 @@ import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface PromptCardProps {
-  id: string;
+  id: number;
   title: string;
   description: string;
   category: string;
@@ -11,6 +11,7 @@ interface PromptCardProps {
   rating: number;
   likes: number;
   author: string;
+  isPurched:boolean
   onPress: () => void;
   onLike: () => void;
 }
@@ -25,6 +26,7 @@ export default function PromptCard({
   author,
   onPress,
   onLike,
+  isPurched
 }: PromptCardProps) {
   return (
     <TouchableOpacity onPress={onPress} style={styles.container}>
@@ -51,12 +53,19 @@ export default function PromptCard({
             </View>
           </View>
           
-          <View style={styles.priceSection}>
+          {!isPurched && <View style={styles.priceSection}>
             <DollarSign size={16} color={price === 0 ? "#10B981" : "#8B5CF6"} />
             <Text style={[styles.price, { color: price === 0 ? "#10B981" : "#8B5CF6" }]}>
               {price === 0 ? 'Free' : price.toFixed(2)}
             </Text>
+          </View>}
+          {
+            isPurched && <View style={styles.priceSection}>
+            <Text style={[styles.price, { color: price === 0 ? "#10B981" : "#8B5CF6" }]}>
+              Purchased
+            </Text>
           </View>
+          }
         </View>
       </View>
     </TouchableOpacity>
@@ -79,8 +88,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   card: {
-  
-    
+
   },
   header: {
     flexDirection: 'row',

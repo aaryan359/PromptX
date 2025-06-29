@@ -44,7 +44,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 16,
         paddingVertical: 12,
-       backgroundColor: '#F5F7FF',
+        backgroundColor: '#F5F7FF',
 
     },
     leftContainer: {

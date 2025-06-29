@@ -17,10 +17,17 @@ export const MarketPlaceService = {
         return response.data;
     },
 
-    async getPromptByQuery(query: string) {
+    async getPromptByQuery(category: string, searchQuery: string) {
+        console.log(" search qury is",searchQuery)
         const response = await apiClient.get('/api/v1/marketplace/get-prompt', {
-            params: { search: query }
+            params: { category, search: searchQuery }
         });
+        return response.data;
+    },
+    async purchasePrompt(promptId: number) {
+        const response = await apiClient.post('/api/v1/marketplace/prompts/purchase',
+            { promptId }
+        );
         return response.data;
     }
 

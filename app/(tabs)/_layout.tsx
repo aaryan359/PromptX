@@ -14,7 +14,7 @@ export default function TabLayout() {
     profile: useRef(new Animated.Value(0)).current,
   };
 
-  // Background position animation
+  
   const bgPosition = useRef(new Animated.Value(0)).current;
 
   const animateTab = (tabName: string) => {
@@ -65,7 +65,7 @@ export default function TabLayout() {
         }}
         tabBar={({ state, descriptors, navigation }) => (
           <View style={{ 
-            backgroundColor: 'pink',
+            backgroundColor: '#F5F7FF',
             borderRadius: 20,
             marginBottom: Platform.OS === 'ios' ? 20 : 5,
             height: Platform.OS === 'ios' ? 80 : 72,

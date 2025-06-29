@@ -1,5 +1,6 @@
 import { AuthService } from '@/api/Auth';
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
+import { router } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { getToken, removeToken, storeToken } from '../helperFunctions/authslice-functions';
 import { removeUserData } from '../helperFunctions/userSlice-functions';
@@ -131,6 +132,7 @@ export const checkAuth = createAsyncThunk(
       if (response.success) {
         dispatch(setUser(response.data))
         await storeToken(token)
+        router.replace('/(tabs)')
         return token;
       }
       else {
@@ -171,7 +173,6 @@ const authSlice = createSlice({
         state.error = action.payload as string;
       })
 
-      
       .addCase(googleOauth.pending, (state) => {
         state.loading = true;
         state.error = null;

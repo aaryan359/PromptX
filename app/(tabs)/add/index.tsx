@@ -1,8 +1,13 @@
 import { MarketPlaceService } from '@/api/MarketPlace';
-import { PlusCircle, UploadCloud } from 'lucide-react-native';
+import * as Haptics from 'expo-haptics';
+import * as ImagePicker from 'expo-image-picker';
+import { PlusCircle, UploadCloud, X } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
+  Dimensions,
   Image,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,6 +17,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
+const { width, height } = Dimensions.get('window');
 
 const MODELS = [
   { label: 'GPT-4', value: 'gpt-4' },
@@ -32,7 +38,9 @@ const CATEGORIES = [
   'Other',
 ];
 
+
 export default function AddPromptScreen() {
+  
   const [userPrompt, setUserPrompt] = useState('');
   const [systemPrompt, setSystemPrompt] = useState('');
   const [promptTitle , setPromptTitle] = useState('');
@@ -44,14 +52,31 @@ export default function AddPromptScreen() {
   const [outputImages, setOutputImages] = useState<string[]>([]);
   const [outputText, setOutputText] = useState('');
 
-  
-  const handleImageUpload = () => {
-    setOutputImages([...outputImages, 'https://placehold.co/80x80']);
+
+
+const handleImageUpload = async () => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsMultipleSelection: true,
+      allowsEditing: false,
+      quality: 1,
+    });
+
+    if (!result.canceled && result.assets) {
+      // Append new images to the existing ones
+      setOutputImages((prev) => [
+        ...prev,
+        ...result.assets.map((asset) => asset.uri),
+      ]);
+    }
   };
 
-
+const handleRemoveImage = (idx: number) => {
+    setOutputImages((prev) => prev.filter((_, i) => i !== idx));
+  };
 
   const handleSubmit = async () => {
+
 
     if (!promptTitle.trim()) {
       Toast.show({
@@ -59,6 +84,9 @@ export default function AddPromptScreen() {
           text1:'Enter all the details',
           text2:'Prompt Title is required '
         })
+        Haptics.notificationAsync(
+                Haptics.NotificationFeedbackType.Error
+              )
       return;
     }
     if (!promptDescription.trim()) {
@@ -128,6 +156,11 @@ export default function AddPromptScreen() {
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
+         <KeyboardAvoidingView
+                  style={{ flex: 1, paddingBottom:30}}
+                  behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                  keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 10}
+                >
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           <Text style={styles.title}>Add Your Prompt</Text>
 
@@ -146,7 +179,7 @@ export default function AddPromptScreen() {
             />
             </View>
 
-            <View style={{marginTop:5}}>
+            <View style={{marginTop: height * 0.006}}>
             <Text style={styles.label}>Prompt Description <Text style={{color:'#EF4444'}}>*</Text> </Text>
             <TextInput
               style={styles.input}
@@ -175,7 +208,7 @@ export default function AddPromptScreen() {
               placeholderTextColor="#94A3B8"
             />
             </View>
-            <View style={{marginTop:5}}>
+            <View style={{marginTop: height * 0.006}}>
             <Text style={styles.label}>System Prompt <Text style={styles.optional}>(optional)</Text></Text>
             <TextInput
               style={styles.input}
@@ -201,7 +234,9 @@ export default function AddPromptScreen() {
                     styles.modelButton,
                     selectedModel === model.value && styles.modelButtonSelected,
                   ]}
-                  onPress={() => setSelectedModel(model.value)}
+                  onPress={() =>
+                    
+                    setSelectedModel(model.value)}
                 >
                   <Text
                     style={[
@@ -280,23 +315,30 @@ export default function AddPromptScreen() {
             <Text style={styles.label}>Output (optional)</Text>
             <View style={styles.outputRow}>
               <TouchableOpacity style={styles.uploadButton} onPress={handleImageUpload}>
-                <UploadCloud size={18} color="#6366F1" />
+                <UploadCloud size={width * 0.045} color="#6366F1" />
                 <Text style={styles.uploadButtonText}>Image</Text>
               </TouchableOpacity>
             </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{marginTop: 8}}>
-              <View style={{flexDirection: 'row', alignItems: 'center'}}>
-                {outputImages.map((img, idx) => (
-                  <Image
-                    key={idx}
-                    source={{ uri: img }}
-                    style={styles.outputImage}
-                  />
-                ))}
-              </View>
-            </ScrollView>
+           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: height * 0.01 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  {outputImages.map((img, idx) => (
+                    <View key={idx} style={{ marginRight: width * 0.02 }}>
+                      <Image
+                        source={{ uri: img }}
+                        style={styles.outputImage}
+                      />
+                      <TouchableOpacity
+                        style={styles.cancelImageButton}
+                        onPress={() => handleRemoveImage(idx)}
+                      >
+                        <X size={16} color="#fff" />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              </ScrollView>
             <TextInput
-              style={[styles.input, {marginTop: 8}]}
+              style={[styles.input, {marginTop: height * 0.01}]}
               placeholder="Output text (optional)..."
               value={outputText}
               onChangeText={setOutputText}
@@ -308,12 +350,13 @@ export default function AddPromptScreen() {
 
           
           <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-            <PlusCircle size={20} color="#fff" />
+            <PlusCircle size={width * 0.05} color="#fff" />
             <Text style={styles.submitButtonText}>Submit Prompt</Text>
           </TouchableOpacity>
 
           
         </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </View>
   );
@@ -322,58 +365,74 @@ export default function AddPromptScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFFFF' },
   safeArea: { flex:1 },
-  scrollContent: { paddingBottom:44  },
+  scrollContent: { paddingBottom: height * 0.055 },
   title: {
-    fontSize: 20,
+    fontSize: Math.max(width * 0.05, 20),
     color: '#1E293B',
     fontFamily: 'Inter-Bold',
-    marginLeft: 24,
-    marginBottom: 5,
+    marginLeft: width * 0.06,
+    marginBottom: height * 0.009,
+    marginTop:height*0.015
+  },
+  outputImage: {
+    width: width * 0.12,
+    height: width * 0.12,
+    borderRadius: width * 0.02,
+    marginRight: 0,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  cancelImageButton: {
+    position: 'absolute',
+    top: 2,
+    left: 2,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 10,
+    padding: 2,
+    zIndex: 2,
   },
   section: {
-    marginBottom: 8,
-    marginHorizontal: 20,
-    borderRadius: 12,
-    padding: 8,
+    marginBottom: height * 0.01,
+    marginHorizontal: width * 0.05,
+    borderRadius: width * 0.03,
+    padding: width * 0.02,
     backgroundColor: '#F8FAFC',
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
   label: {
     color: '#1E293B',
-    fontSize: 15,
+    fontSize: Math.max(width * 0.0375, 13),
     fontFamily: 'Inter-SemiBold',
-    marginBottom: 6,
+    marginBottom: height * 0.0075,
   },
   optional: {
     color: '#64748B',
-    fontSize: 13,
+    fontSize: Math.max(width * 0.0325, 11),
     fontFamily: 'Inter-Regular',
   },
   input: {
     backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    borderRadius: 8,
-    padding: 10,
-    fontSize: 15,
+    borderRadius: width * 0.02,
+    padding: width * 0.025,
+    fontSize: Math.max(width * 0.0375, 13),
     color: '#1E293B',
     fontFamily: 'Inter-Regular',
-    minHeight: 44,
-    marginBottom: 1,
+    minHeight: height * 0.055,
+    marginBottom: height * 0.00125,
   },
   modelRow: {
     flexDirection: 'row',
-    
-  
   },
   modelButton: {
     backgroundColor: '#E0E7FF',
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-    marginRight: 8,
-    marginBottom: 4,
+    paddingHorizontal: width * 0.035,
+    paddingVertical: height * 0.0075,
+    borderRadius: width * 0.05,
+    marginRight: width * 0.02,
+    marginBottom: height * 0.005,
   },
   modelButtonSelected: {
     backgroundColor: '#6941C6',
@@ -381,7 +440,7 @@ const styles = StyleSheet.create({
   modelButtonText: {
     color: '#6941C6',
     fontFamily: 'Inter-Medium',
-    fontSize: 14,
+    fontSize: Math.max(width * 0.035, 12),
   },
   modelButtonTextSelected: {
     color: '#fff',
@@ -391,11 +450,11 @@ const styles = StyleSheet.create({
   },
   categoryButton: {
     backgroundColor: '#E0E7FF',
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-    marginRight: 8,
-    marginBottom: 4,
+    paddingHorizontal: width * 0.035,
+    paddingVertical: height * 0.0075,
+    borderRadius: width * 0.05,
+    marginRight: width * 0.02,
+    marginBottom: height * 0.005,
   },
   categoryButtonSelected: {
     backgroundColor: '#6941C6',
@@ -403,7 +462,7 @@ const styles = StyleSheet.create({
   categoryButtonText: {
     color: '#6941C6',
     fontFamily: 'Inter-Medium',
-    fontSize: 14,
+    fontSize: Math.max(width * 0.035, 12),
   },
   categoryButtonTextSelected: {
     color: '#fff',
@@ -414,10 +473,10 @@ const styles = StyleSheet.create({
   },
   freeButton: {
     backgroundColor: '#E0E7FF',
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 20,
-    marginRight: 8,
+    paddingHorizontal: width * 0.04,
+    paddingVertical: height * 0.0075,
+    borderRadius: width * 0.05,
+    marginRight: width * 0.02,
   },
   freeButtonActive: {
     backgroundColor: '#6941C6',
@@ -425,7 +484,7 @@ const styles = StyleSheet.create({
   freeButtonText: {
     color: '#6941C6',
     fontFamily: 'Inter-Medium',
-    fontSize: 14,
+    fontSize: Math.max(width * 0.035, 12),
   },
   freeButtonTextActive: {
     color: '#fff',
@@ -434,13 +493,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    borderRadius: 8,
-    padding: 4,
-    fontSize: 15,
+    borderRadius: width * 0.02,
+    padding: width * 0.01,
+    fontSize: Math.max(width * 0.0375, 13),
     color: '#6941C6',
     fontFamily: 'Inter-Regular',
-    width: 80,
-    marginLeft: 4,
+    width: width * 0.2,
+    marginLeft: width * 0.01,
   },
   outputRow: {
     flexDirection: 'row',
@@ -449,67 +508,67 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#E0E7FF',
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginRight: 8,
+    borderRadius: width * 0.05,
+    paddingHorizontal: width * 0.03,
+    paddingVertical: height * 0.0075,
+    marginRight: width * 0.02,
   },
   uploadButtonText: {
     color: '#6941C6',
     fontFamily: 'Inter-Medium',
-    fontSize: 14,
-    marginLeft: 4,
+    fontSize: Math.max(width * 0.035, 12),
+    marginLeft: width * 0.01,
   },
   outputImage: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
-    marginRight: 8,
+    width: width * 0.12,
+    height: width * 0.12,
+    borderRadius: width * 0.02,
+    marginRight: width * 0.02,
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
   pdfBadge: {
     backgroundColor: '#F59E0B',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    marginRight: 8,
+    borderRadius: width * 0.02,
+    paddingHorizontal: width * 0.025,
+    paddingVertical: height * 0.0075,
+    marginRight: width * 0.02,
   },
   pdfBadgeText: {
     color: '#fff',
     fontFamily: 'Inter-Bold',
-    fontSize: 13,
+    fontSize: Math.max(width * 0.0325, 11),
   },
   submitButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#6941C6',
-    borderRadius: 24,
-    paddingVertical: 12,
+    borderRadius: width * 0.06,
+    paddingVertical: height * 0.015,
     justifyContent: 'center',
-    marginHorizontal: 40,
-    marginTop: 2,
-    gap: 12,
+    marginHorizontal: width * 0.1,
+    marginTop: height * 0.0025,
+    gap: width * 0.03,
   },
   submitButtonText: {
     color: '#fff',
     fontFamily: 'Inter-SemiBold',
-    fontSize: 14,
+    fontSize: Math.max(width * 0.035, 12),
   },
   successBox: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#DCFCE7',
-    borderRadius: 12,
-    padding: 14,
-    marginHorizontal: 30,
-    marginTop: 18,
+    borderRadius: width * 0.03,
+    padding: width * 0.035,
+    marginHorizontal: width * 0.075,
+    marginTop: height * 0.0225,
     justifyContent: 'center',
-    gap: 10,
+    gap: width * 0.025,
   },
   successText: {
     color: '#22C55E',
     fontFamily: 'Inter-SemiBold',
-    fontSize: 15,
+    fontSize: Math.max(width * 0.0375, 13),
   },
 });

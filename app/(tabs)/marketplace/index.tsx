@@ -3,8 +3,8 @@ import CustomHeader from '@/components/CustomHeader';
 import FilterModal from '@/components/FilterModal';
 import PromptCard from '@/components/PromptCard';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Filter, Search, TrendingUp } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import { Check, Filter, Search, TrendingUp, X } from 'lucide-react-native';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -24,17 +24,21 @@ interface Author {
 }
 
 interface Prompt {
-  id: string;
+  id: number;
   title: string;
   description: string;
   category: string;
   price: number;
   rating: number;
-  likesCount:number
+  likesCount: number;
   author: Author;
   content: string;
-  outputImage : [];
-  outputText :string,
+  userPrompt: string,
+  modelUsed:string,
+  systemPrompt:string,
+  outputImage: string[];
+  outputText: string;
+  isActivate: boolean;
 }
 
 const categories = [
@@ -50,27 +54,35 @@ const categories = [
 ];
 
 export default function MarketplaceScreen() {
+  const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedPrompt, setSelectedPrompt] = useState<Prompt | null>(null);
   const [showPromptModal, setShowPromptModal] = useState(false);
-  const [likedPrompts, setLikedPrompts] = useState<Set<string>>(new Set());
+  const [likedPrompts, setLikedPrompts] = useState<Set<number>>(new Set());
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [loading, setLoading] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [isBuying, setIsBuying] = useState(false);
+  const [paymentDone, setPaymentDone] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const upiId = "aaryanmeena96-1@okicici";
+  const qrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=upi://pay?pa=yourupi@bank&pn=PromptMarket";
+
   const [currentFilters, setCurrentFilters] = useState({
-                                                       sortBy: 'newest',
-                                                       price: 'all',
-                                                       rating: 'all',
-                                                       category: 'All'
-                                                          });
+    sortBy: 'newest',
+    price: 'all',
+    rating: 'all',
+    category: 'All'
+  });
 
   const fetchPrompts = async () => {
     setLoading(true);
     try {
-      const respons = await MarketPlaceService.getPromptByQuery(selectedCategory);
-      console.log("promtp from backend is",respons.data);
-      setPrompts(respons.data);
+      console.log(" search qury in fronted function",searchQuery);
+      const response = await MarketPlaceService.getPromptByQuery(selectedCategory,searchQuery.trim());
+      setPrompts(response.data);
     } catch (error: any) {
       if (error?.response?.status === 429) {
         Toast.show({
@@ -90,9 +102,23 @@ export default function MarketplaceScreen() {
     }
   };
 
-  useEffect(() => {
+
+
+
+useEffect(() => {
+  if (debounceTimeout.current) {
+    clearTimeout(debounceTimeout.current);
+  }
+  debounceTimeout.current = setTimeout(() => {
     fetchPrompts();
-  }, [selectedCategory]);
+  }, 500) as unknown as NodeJS.Timeout; 
+
+  return () => {
+    if (debounceTimeout.current) {
+      clearTimeout(debounceTimeout.current);
+    }
+  };
+}, [selectedCategory, searchQuery]);
 
 
   const handlePromptPress = (prompt: Prompt) => {
@@ -100,7 +126,8 @@ export default function MarketplaceScreen() {
     setShowPromptModal(true);
   };
 
-  const handleLike = (promptId: string) => {
+
+  const handleLike = (promptId: number) => {
     setLikedPrompts((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(promptId)) {
@@ -112,23 +139,68 @@ export default function MarketplaceScreen() {
     });
   };
 
-
+  const handleCopyUPI = async () => {
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1200);
+  };
 
   const handleUsePrompt = () => {
     setShowPromptModal(false);
   };
 
-  const handlePurchasePrompt = () => {
-    // Handle prompt purchase
-    // console.log('Purchase prompt:', selectedPrompt?.id);
-    setShowPromptModal(false);
+  const handlePurchasePrompt = async () => {
+    if (!selectedPrompt) return;
+    
+    setShowQRModal(true);
+    setPaymentDone(false);
+    setCopied(false);
+    
+    // Simulate payment process
+    setTimeout(async () => {
+      try {
+        setIsBuying(true);
+        const response = await MarketPlaceService.purchasePrompt(selectedPrompt.id);
+        
+        if (response.success) {
+          setPaymentDone(true);
+          // Update the prompt's purchase status
+          setPrompts(prev => prev.map(prompt => 
+            prompt.id === selectedPrompt.id 
+              ? { ...prompt, isActivate: true } 
+              : prompt
+          ));
+          
+          // Close modals after delay
+          setTimeout(() => {
+            setShowQRModal(false);
+            setIsBuying(false);
+          }, 1000);
+        }
+      } catch (error) {
+        Toast.show({
+          type: 'error',
+          text1: 'Purchase Failed',
+          text2: 'There was an error processing your purchase',
+        });
+        setIsBuying(false);
+      }
+    }, 1000);
   };
- 
+
+  useEffect(() => {
+    if (paymentDone) {
+      const timer = setTimeout(() => {
+        setShowQRModal(false);
+        setIsBuying(false);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [paymentDone]);
 
   return (
     <LinearGradient colors={['#F5F7FF', '#E8ECFF']} style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <CustomHeader/>
+        <CustomHeader />
 
         <View style={styles.searchContainer}>
           <View style={styles.searchBox}>
@@ -141,12 +213,12 @@ export default function MarketplaceScreen() {
               onChangeText={setSearchQuery}
             />
           </View>
-         <TouchableOpacity 
-  style={styles.filterButton}
-  onPress={() => setShowFilterModal(true)}
->
-  <Filter size={20} color="#8B5CF6" />
-</TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.filterButton}
+            onPress={() => setShowFilterModal(true)}
+          >
+            <Filter size={20} color="#8B5CF6" />
+          </TouchableOpacity>
         </View>
 
         <ScrollView
@@ -185,9 +257,7 @@ export default function MarketplaceScreen() {
 
         {loading ? (
           <View style={styles.loaderContainer}>
-            
-              <ActivityIndicator size="large" color="#6941C6" />
-            
+            <ActivityIndicator size="large" color="#6941C6" />
           </View>
         ) : (
           <ScrollView style={styles.promptsList} contentContainerStyle={styles.promptsContent}>
@@ -202,6 +272,7 @@ export default function MarketplaceScreen() {
                 rating={prompt.rating}
                 likes={prompt.likesCount + (likedPrompts.has(prompt.id) ? 1 : 0)}
                 author={prompt.author.name}
+                isPurched={prompt.isActivate}
                 onPress={() => handlePromptPress(prompt)}
                 onLike={() => handleLike(prompt.id)}
               />
@@ -214,8 +285,7 @@ export default function MarketplaceScreen() {
           </ScrollView>
         )}
 
-
-
+        {/* Prompt Detail Modal */}
         <Modal
           visible={showPromptModal}
           transparent
@@ -228,54 +298,122 @@ export default function MarketplaceScreen() {
 
               <ScrollView style={styles.modalScroll}>
                 <Text style={styles.modalTitle}>{selectedPrompt?.title}</Text>
-                <View style={styles.modalCategory}>
-                <Text style={styles.modelCategoryText}>{selectedPrompt?.category}</Text>
+                <View style={[{flex:1, flexDirection:'row', gap:5,},styles.section]}>
+
+                  <View style={[styles.modalCategory]}>
+                       <Text style={styles.modelCategoryText}>{selectedPrompt?.category}</Text>
+                  </View>
+
+                  <View style={styles.modalCategory}>
+                       <Text style={styles.modelCategoryText}>{selectedPrompt?.modelUsed}</Text>
+                  </View>
+
                 </View>
-                <Text style={styles.modalDescription}>{selectedPrompt?.description}</Text>
 
-                          <View style={styles.section}>
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Description</Text>
+                    <View style={styles.menuItem}>
+                      <Text style={styles.menuText}>
+                        {selectedPrompt?.description}
+                      </Text>
+                    </View>
+                    
+                  </View>
+                {selectedPrompt?.outputText && (
+                  <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Text Output</Text>
+                    <View style={styles.menuItem}>
+                      <Text style={styles.menuText}>
+                        {selectedPrompt.outputText}
+                      </Text>
+                    </View>
+                  </View>
+                )}
 
-                                 <Text style={ styles.sectionTitle }> Text Output </Text>
+                {selectedPrompt?.outputImage?.length && selectedPrompt?.outputImage?.length > 0 && (
+                  <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Image Output</Text>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      style={styles.imageContainer}>
+                      <View style={styles.imageContainer}>
+                        {selectedPrompt?.outputImage.map((imageUrl, index) => (
+                          <Image
+                            key={`image-${index}`}
+                            source={{ uri: imageUrl }}
+                            style={styles.outputImage}
+                            resizeMode="contain"
+                          />
+                        ))}
+                      </View>
+                    </ScrollView>
+                  </View>
+                )}
+                 
+                 {selectedPrompt?.isActivate && (
+                  <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>User Prompt</Text>
+                    <View style={styles.menuItem}>
+                      <Text style={styles.menuText}>
+                        {selectedPrompt.userPrompt}
+                      </Text>
+                      <TouchableOpacity onPress={handleCopyUPI} style={styles.qrCopyButton}>
+                      {copied ?  (
+                          <Check size={18} color="#22C55E" />
+                       ) : (
+                         <Text style={styles.qrCopyText}>Copy</Text>
+                       )}
+                  </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+                {selectedPrompt?.isActivate && (
+                  <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>System Prompt</Text>
+                    <View style={styles.menuItem}>
+                      <Text style={styles.menuText}>
+                        {selectedPrompt.systemPrompt}
+                      </Text>
+                      <TouchableOpacity onPress={handleCopyUPI} style={styles.qrCopyButton}>
+                    {copied ? (
+                      <Check size={18} color="#22C55E" />
+                    ) : (
+                      <Text style={styles.qrCopyText}>Copy</Text>
+                    )}
+                  </TouchableOpacity>
+                    </View>
+                    
+                  </View>
+                )}
 
-                                 <View style={styles.menuItem}>
-                                       <Text style={ styles.menuText }>
-                                               {
-                                                selectedPrompt?.outputText
-                                               }
-                                        </Text>
-                                 </View>
-                          </View>
-                          <View style={styles.section}>
 
-                                 <Text style={ styles.sectionTitle }> Text Output </Text>
-
-                                 <View style={styles.menuItem}>
-                                   {
-                                    selectedPrompt?.outputImage && <Image source={selectedPrompt?.outputImage}  style={ styles.menuText }>
-                                                
-                                        </Image>
-                                  }
-                                        
-                                 </View>
-                          </View>
               </ScrollView>
 
               <View style={styles.modalActions}>
                 <TouchableOpacity
                   onPress={() => setShowPromptModal(false)}
                   style={styles.cancelButton}
+                  disabled={isBuying}
                 >
                   <Text style={styles.cancelButtonText}>Cancel</Text>
                 </TouchableOpacity>
 
-                {selectedPrompt?.price === 0 ? (
+
+                {selectedPrompt?.price === 0 || selectedPrompt?.isActivate ? (
                   <TouchableOpacity onPress={handleUsePrompt} style={styles.useButton}>
                     <LinearGradient colors={['#10B981', '#059669']} style={styles.useGradient}>
-                      <Text style={styles.useButtonText}>Use Free</Text>
+                      <Text style={styles.useButtonText}>
+                        {selectedPrompt?.isActivate ? 'Use Prompt' : 'Use Free'}
+                      </Text>
                     </LinearGradient>
                   </TouchableOpacity>
                 ) : (
-                  <TouchableOpacity onPress={handlePurchasePrompt} style={styles.purchaseButton}>
+                  <TouchableOpacity 
+                    onPress={handlePurchasePrompt} 
+                    style={styles.purchaseButton}
+                    disabled={isBuying}
+                  >
                     <LinearGradient colors={['#8B5CF6', '#7C3AED']} style={styles.purchaseGradient}>
                       <Text style={styles.purchaseButtonText}>
                         Buy ${selectedPrompt?.price}
@@ -283,25 +421,76 @@ export default function MarketplaceScreen() {
                     </LinearGradient>
                   </TouchableOpacity>
                 )}
+
+
               </View>
             </View>
           </View>
         </Modal>
 
+        {/* QR Payment Modal */}
+        <Modal
+          visible={showQRModal}
+          transparent
+          animationType="slide"
+          onRequestClose={() => !isBuying && setShowQRModal(false)}
+        >
+          <View style={styles.qrModalOverlay}>
+            <View style={styles.qrModalContent}>
+              <TouchableOpacity
+                style={styles.qrModalClose}
+                onPress={() => !isBuying && setShowQRModal(false)}
+                disabled={isBuying}
+              >
+                <X size={22} color="#64748B" />
+              </TouchableOpacity>
+              <Text style={styles.qrModalTitle}>Scan & Pay</Text>
+              <Image
+                source={{ uri: qrCodeUrl }}
+                style={styles.qrImage}
+                resizeMode="contain"
+              />
+
+              <View>
+                <View style={styles.qrUPIRow}>
+                  <Text style={styles.qrUPIText}>{upiId}</Text>
+                  <TouchableOpacity onPress={handleCopyUPI} style={styles.qrCopyButton}>
+                    {copied ? (
+                      <Check size={18} color="#22C55E" />
+                    ) : (
+                      <Text style={styles.qrCopyText}>Copy</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+              
+              {isBuying ? (
+                <View style={styles.loadingPayment}>
+                  <ActivityIndicator size="small" color="#8B5CF6" />
+                  <Text style={styles.loadingPaymentText}>Processing payment...</Text>
+                </View>
+              ) : (
+                <Text style={styles.qrNote}>Scan this QR-code for payment</Text>
+              )}
+            </View>
+          </View>
+        </Modal>
+
         <FilterModal
-  visible={showFilterModal}
-  onClose={() => setShowFilterModal(false)}
-  onApply={(filters:any) => {
-    setCurrentFilters(filters);
-    // Here you would typically refetch data with the new filters
-    // For example: fetchPromptsWithFilters(filters);
-  }}
-  currentFilters={currentFilters}
-/>
+          visible={showFilterModal}
+          onClose={() => setShowFilterModal(false)}
+          onApply={(filters: any) => {
+            setCurrentFilters(filters);
+            setShowFilterModal(false);
+          }}
+          currentFilters={currentFilters}
+        />
       </SafeAreaView>
     </LinearGradient>
   );
 }
+
+// ... (keep your existing styles)
 
 const styles = StyleSheet.create({
   container: {
@@ -443,26 +632,25 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: '80%',
-    paddingBottom: 34,
+    maxHeight: '85%',
+    paddingBottom: 20,
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
   modalScroll: {
     paddingHorizontal:20,
-    paddingVertical:10
   },
   modalTitle: {
     color: '#1E293B',
     fontSize: 24,
     fontFamily: 'Inter-Bold',
-    marginBottom: 8,
+    marginBottom: 5,
   },
   modalCategory: {
     backgroundColor: '#8B5CF6',
     borderColor: '#7C3AED',
     maxHeight: 35,
-    width:'30%',
+    width:'25%',
     paddingVertical: 6,
     borderRadius: 20,
     borderWidth: 1,
@@ -550,6 +738,17 @@ previewContent: {
 		marginLeft: 12,
 		flex: 1,
 	},
+  imageContainer: {
+  flexDirection: 'row',
+  flexWrap: 'wrap',
+  gap: 10,
+},
+outputImage: {
+  width: 300,
+  height: 300,
+  borderRadius: 20,
+  backgroundColor: '#f0f0f0',
+},
 paywallContainer: {
   backgroundColor: '#F1F5F9',
   borderRadius: 8,
@@ -619,5 +818,101 @@ subscribeButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontFamily: 'Inter-Medium',
+  },
+  qrModalOverlay: {
+     flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+    
+  },
+  qrModalContent: {
+   backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '80%',
+    paddingBottom: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingHorizontal:20,
+    paddingVertical:10,
+    alignItems:'center'
+  },
+  qrModalClose: {
+    position: 'absolute',
+    right: 12,
+    top: 12,
+    zIndex: 2,
+    padding: 4,
+  },
+  qrModalTitle: {
+    fontSize: 20,
+    fontFamily: 'Inter-Bold',
+    color: '#1E293B',
+    marginBottom: 16,
+    marginTop: 4,
+  },
+  qrImage: {
+    width: 180,
+    height: 180,
+    marginBottom: 18,
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
+  },
+  qrModalSubtitle: {
+    fontSize: 15,
+    color: '#6366F1',
+    fontFamily: 'Inter-SemiBold',
+    marginBottom: 4,
+  },
+
+  qrUPIRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		paddingVertical: 12,
+		paddingHorizontal: 20,
+		borderRadius: 8,
+		marginBottom: 4,
+		backgroundColor: "#FFFFFF",
+		borderWidth: 1,
+		borderColor: "#E2E8F0",
+	
+  },
+  qrUPIText: {
+    fontSize: 15,
+    color: '#1E293B',
+    fontFamily: 'Inter-Medium',
+    marginRight: 8,
+  },
+  qrCopyButton: {
+    backgroundColor: '#E0E7FF',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginLeft: 4,
+  },
+  qrCopyText: {
+    color: '#6366F1',
+    fontFamily: 'Inter-Medium',
+    fontSize: 13,
+  },
+  qrPaidButton: {
+    width: '100%',
+    marginTop: 10,
+  },
+  qrPaidGradient: {
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  qrPaidText: {
+    color: '#fff',
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 16,
+  },
+  qrNote: {
+    color: '#64748B',
+    fontSize: 13,
+    fontFamily: 'Inter-Regular',
+    textAlign: 'center',
   },
 });

@@ -49,6 +49,7 @@ export default function AuthScreen() {
 				});
 			}
 			setLoading(false);
+			router.replace('/(tabs)')
 		} catch (err: any) {
 			console.error("Google Sign-In Error:", err);
 			Toast.show({
@@ -57,6 +58,7 @@ export default function AuthScreen() {
 				text2:err.errors[0].message
 
 			})
+			
 		} finally {
 			setLoading(false);
 		}
@@ -253,7 +255,7 @@ export default function AuthScreen() {
 						onPress={handleGoogleSignIn}
 						disabled={loading}>
 						<Image
-							source={require("../../assets/images/googleicon.png")}
+							source={require("../../../assets/images/googleicon.png")}
 							style={
 								styles.socialIcon
 							}
@@ -274,9 +276,7 @@ export default function AuthScreen() {
 						then Login
 						<TouchableOpacity
 							onPress={() =>
-								router.push(
-									"/(auth)/login"
-								)
+								router.push("/(auth)/login")
 							}>
 							<Text
 								style={{

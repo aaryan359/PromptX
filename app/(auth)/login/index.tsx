@@ -1,3 +1,5 @@
+import { useAppDispatch } from "@/redux/hook";
+import { googleOauth } from "@/redux/slices/authSlice";
 import { googleLogin } from "@/utils/GoogleSiginIn";
 
 import { Ionicons } from "@expo/vector-icons";
@@ -19,11 +21,13 @@ import {
 	View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Toast from "react-native-toast-message";
 
 // Complete the auth session for web browser
 WebBrowser.maybeCompleteAuthSession();
 
 export default function AuthScreen() {
+	const dispatch = useAppDispatch();
 	
 	const router = useRouter();
 
@@ -32,27 +36,40 @@ export default function AuthScreen() {
 	const [password, setPassword] = useState("");
 
 	const handleGoogleSignIn = async () => {
-		try {
-			setLoading(true);
-			
-
-			 console.log("Starting Google Sign-In");
-			 const {idToken, user} = await googleLogin();
-             console.log(' id toke and user is', idToken, user);
-
-
-			}catch (err:any) {
-			console.error("Google Sign-In Error:", err);
-			if (err.errors && err.errors.length > 0) {
-				Alert.alert("Error", err.errors[0].message);
-			} else {
-				Alert.alert("Error", "Failed to sign in with Google. Please try again.");
+			try {
+				setLoading(true);
+	
+				console.log("Starting Google Sign-In");
+				const { idToken, user } = await googleLogin();
+				console.log(" id toke and user is", idToken, user);
+	
+				const result = await dispatch(googleOauth({ idToken, user}));
+	
+				console.log(" result of google auth is", result);
+	
+				if (googleOauth.fulfilled.match(result)) {
+					Toast.show({
+						type: "success",
+						text1: "Success",
+						text2: "registe successful!",
+						position: "top",
+					});
+				}
+				router.replace('/(tabs)')
+				setLoading(false);
+			} catch (err: any) {
+				console.error("Google Sign-In Error:", err);
+				Toast.show({
+					type:'error',
+					text1:'Google Auth Failed',
+					text2:err.errors[0].message
+	
+				})
+			} finally {
+				setLoading(false);
 			}
-		} finally {
-			setLoading(false);
-		}
-	 
-	};
+		};
+	
 
 	
 
@@ -157,7 +174,7 @@ export default function AuthScreen() {
 						disabled={loading}
 					>
 						<Image
-							source={require("../../assets/images/googleicon.png")}
+							source={require("../../../assets/images/googleicon.png")}
 							style={styles.socialIcon}
 						/>
 						<Text style={styles.socialButtonText}>
@@ -186,7 +203,7 @@ export default function AuthScreen() {
 				<View>
 					<Text style={styles.termsText}>
 						If you are a new user then Register first
-						<TouchableOpacity onPress={() => router.push('/(auth)')}>
+						<TouchableOpacity onPress={() => router.push('/(auth)/register')}>
 							<Text
 								style={{
 									color: "#6366F1",

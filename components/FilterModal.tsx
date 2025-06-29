@@ -17,7 +17,7 @@ const FilterModal = ({ visible, onClose, onApply, currentFilters }:any) => {
     rating: 'all',
     category: 'All'
   });
-  onClose(); // <-- Add this line to close the modal after reset
+  onClose(); 
 };
  const slideAnim = new Animated.Value(0);
   const backdropOpacity = new Animated.Value(0);
@@ -55,6 +55,8 @@ const FilterModal = ({ visible, onClose, onApply, currentFilters }:any) => {
     }
   }, [visible]);
 
+
+
   const modalTranslateY = slideAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [-600, 0] // Starts 600px above, moves to 0
@@ -72,12 +74,15 @@ const FilterModal = ({ visible, onClose, onApply, currentFilters }:any) => {
 
 
 
+
   const sortOptions = [
     { id: 'newest', label: 'Newest First' },
     { id: 'oldest', label: 'Oldest First' },
     { id: 'highestRated', label: 'Highest Rated' },
     { id: 'mostLiked', label: 'Most Liked' }
   ];
+
+
 
   const priceOptions = [
     { id: 'all', label: 'All Prices' },
@@ -87,12 +92,15 @@ const FilterModal = ({ visible, onClose, onApply, currentFilters }:any) => {
     { id: 'highToLow', label: 'Price: High to Low' }
   ];
 
+
+
   const ratingOptions = [
     { id: 'all', label: 'All Ratings' },
     { id: '4+', label: '4 Stars & Up' },
     { id: '3+', label: '3 Stars & Up' },
     { id: '2+', label: '2 Stars & Up' }
   ];
+
 
   const handleFilterChange = (filterType:any, value:any) => {
     setFilters(prev => ({
@@ -105,6 +113,7 @@ const FilterModal = ({ visible, onClose, onApply, currentFilters }:any) => {
     onApply(filters);
     onClose();
   };
+  
 
   return (
     <Modal
@@ -132,11 +141,8 @@ const FilterModal = ({ visible, onClose, onApply, currentFilters }:any) => {
           ]}
         >
            
-
-          
-
           <ScrollView style={styles.modalContent}>
-            {/* Sort By Section */}
+           
             <View style={styles.filterSection}>
               <Text style={styles.sectionTitle}>Sort By</Text>
               <View style={styles.optionsContainer}>
@@ -195,7 +201,7 @@ const FilterModal = ({ visible, onClose, onApply, currentFilters }:any) => {
                       styles.optionButton,
                       filters.rating === option.id && styles.selectedOption
                     ]}
-                    onPress={() => handleFilterChange('rating', option.id)}
+                     onPress={() => handleFilterChange('rating', option.id)}
                   >
                     <Text style={[
                       styles.optionText,
