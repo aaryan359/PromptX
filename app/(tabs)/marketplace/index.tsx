@@ -145,6 +145,11 @@ useEffect(() => {
   };
 
   const handleUsePrompt = () => {
+    Toast.show({
+      type:'success',
+      text1:'Prompt saved',
+      text2:'Prompt Saved Successfully'
+    })
     setShowPromptModal(false);
   };
 
@@ -328,9 +333,10 @@ useEffect(() => {
                       </Text>
                     </View>
                   </View>
+                  
                 )}
 
-                {selectedPrompt?.outputImage?.length && selectedPrompt?.outputImage?.length > 0 && (
+                { selectedPrompt?.outputImage?.length  && selectedPrompt?.outputImage?.length > 0  && (
                   <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Image Output</Text>
                     <ScrollView
@@ -350,13 +356,16 @@ useEffect(() => {
                     </ScrollView>
                   </View>
                 )}
-                 
-                 {selectedPrompt?.isActivate && (
+                  
+              
+          
+
+                 {selectedPrompt?.isActivate || selectedPrompt?.price == 0  && (selectedPrompt.userPrompt.trim())&& (
                   <View style={styles.section}>
                     <Text style={styles.sectionTitle}>User Prompt</Text>
                     <View style={styles.menuItem}>
                       <Text style={styles.menuText}>
-                        {selectedPrompt.userPrompt}
+                        {selectedPrompt?.userPrompt}
                       </Text>
                       <TouchableOpacity onPress={handleCopyUPI} style={styles.qrCopyButton}>
                       {copied ?  (
@@ -368,7 +377,7 @@ useEffect(() => {
                     </View>
                   </View>
                 )}
-                {selectedPrompt?.isActivate && (
+                {selectedPrompt?.isActivate || selectedPrompt?.price == 0 && (selectedPrompt.systemPrompt.trim()) && (
                   <View style={styles.section}>
                     <Text style={styles.sectionTitle}>System Prompt</Text>
                     <View style={styles.menuItem}>
@@ -404,7 +413,7 @@ useEffect(() => {
                   <TouchableOpacity onPress={handleUsePrompt} style={styles.useButton}>
                     <LinearGradient colors={['#10B981', '#059669']} style={styles.useGradient}>
                       <Text style={styles.useButtonText}>
-                        {selectedPrompt?.isActivate ? 'Use Prompt' : 'Use Free'}
+                        Save Prompt
                       </Text>
                     </LinearGradient>
                   </TouchableOpacity>

@@ -1,7 +1,9 @@
 import { AuthService } from "@/api/Auth";
+import useCloudinaryUpload from "@/hooks/upload";
 import { useAppDispatch, useAppSelector } from "@/redux/hook";
 import { logout } from "@/redux/slices/authSlice";
 import { RootState } from "@/redux/store";
+import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import { Bookmark, Crown, Delete, Edit, HelpCircle, LogOut, PlusCircle, Settings, Shield, ShoppingBagIcon, Star, User, Zap } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
@@ -15,8 +17,9 @@ export default function ProfileScreen() {
   const [data,setData] = useState();
   const [countData,setCountData] = useState();
   const [recentLikedPrompts, setRecentLikedPrompts] = useState([]);
-const [recentPurchasedPrompts, setRecentPurchasedPrompts] = useState([]);
+  const [recentPurchasedPrompts, setRecentPurchasedPrompts] = useState([]);
   const user = useAppSelector((state: RootState) => state.user);
+  const [profileImage , setProfileImage] = useState(user?.profilePicture);
 
   const fetchUserData = async () => {
   try {
@@ -29,11 +32,15 @@ const [recentPurchasedPrompts, setRecentPurchasedPrompts] = useState([]);
   } catch (error) {
     console.error("Error fetching user stats:", error);
   }
-};
+  };
+
 
   useEffect(()=>{
 fetchUserData();
   },[user])
+
+  
+
 
   const handleSignOut = async () => {
     try {
@@ -71,6 +78,39 @@ fetchUserData();
     closeModal();
   };
 
+
+
+
+
+  const { uploadToCloudinary, isUploading } = useCloudinaryUpload();
+
+	const handleImageUpload = async () => {
+  let result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ["images", "videos"],
+    allowsMultipleSelection: false, // Only one profile image
+    allowsEditing: true,
+    quality: 1,
+  });
+
+  if (!result.canceled && result.assets && result.assets.length > 0) {
+    Toast.show({ type: "info", text1: "Uploading...", text2: "Updating your Profile" });
+    try {
+      const uploadResult = await uploadToCloudinary(result.assets[0].uri);
+      if (uploadResult?.secure_url) {
+        setProfileImage(uploadResult.secure_url);
+        // Optionally update user profile on backend here
+        Toast.show({ type: "success", text1: "Profile Updated", text2: "Profile image updated successfully." });
+      } else {
+        Toast.show({ type: "error", text1: "Upload Failed", text2: "No URL returned from Cloudinary." });
+      }
+    } catch (error) {
+      Toast.show({ type: "error", text1: "Upload Failed", text2: "Uploading Profile Failed" });
+    }
+  }
+};
+	
+
+  
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
@@ -78,11 +118,11 @@ fetchUserData();
           {/* Profile Header */}
           <View style={styles.profileHeader}>
             <View style={styles.avatarContainer}>
-              {user?.profilePicture ? (
+              {profileImage ? (
                 <View style={styles.avatar}>
                   <Image
                     source={{
-                      uri: user?.profilePicture,
+                      uri: profileImage,
                     }}
                     style={{
                       width: 80,
@@ -99,7 +139,7 @@ fetchUserData();
                   />
                 </View>
               )}
-              <TouchableOpacity style={styles.editButton}>
+              <TouchableOpacity style={styles.editButton} onPress={handleImageUpload}>
                 <Edit
                   size={14}
                   color='#FFFFFF'
@@ -678,9 +718,9 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.2)',
-	borderTopLeftRadius:20,
-	borderTopRightRadius:20,
-	paddingHorizontal:3
+	  borderTopLeftRadius:20,
+	  borderTopRightRadius:20,
+	  paddingHorizontal:3
   },
   modalContent: {
     backgroundColor: '#FFFFFF',
@@ -804,7 +844,8 @@ fullModalContent: {
   backgroundColor: '#FFFFFF',
   borderTopLeftRadius: 20,
   borderTopRightRadius: 20,
-  padding: 20,
+  paddingHorizontal:20,
+
   maxHeight: '80%',
 },
 fullModalTitle: {
