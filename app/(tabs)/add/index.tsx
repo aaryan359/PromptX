@@ -1,4 +1,5 @@
 import { MarketPlaceService } from "@/api/MarketPlace";
+import CustomHeader from "@/components/CustomHeader";
 import useCloudinaryUpload from "@/hooks/upload";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
@@ -151,6 +152,7 @@ export default function AddPromptScreen() {
 	return (
 		<View style={styles.container}>
 			<SafeAreaView style={styles.safeArea}>
+				<CustomHeader/>
 				<KeyboardAvoidingView
 					style={{ flex: 1, paddingBottom: 30 }}
 					behavior={Platform.OS === "ios" ? "padding" : "height"}

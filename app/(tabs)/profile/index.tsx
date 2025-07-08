@@ -15,7 +15,7 @@ import Toast from "react-native-toast-message";
 export default function ProfileScreen() {
   const dispatch = useAppDispatch();
   const [activeModal, setActiveModal] = useState<string | null>(null);
-  const [data,setData] = useState();
+
   const [countData,setCountData] = useState();
   const [recentLikedPrompts, setRecentLikedPrompts] = useState([]);
   const [recentPurchasedPrompts, setRecentPurchasedPrompts] = useState([]);
@@ -29,7 +29,7 @@ export default function ProfileScreen() {
     setCountData(response.data.counts);
     setRecentLikedPrompts(response.data.recentlyLiked || []);
     setRecentPurchasedPrompts(response.data.recentPurchases || []);
-    console.log('count data is', countData);
+    
   } catch (error) {
     console.error("Error fetching user stats:", error);
   }
@@ -37,7 +37,7 @@ export default function ProfileScreen() {
 
 
   useEffect(()=>{
-fetchUserData();
+       fetchUserData();
   },[user])
 
   
@@ -80,18 +80,16 @@ fetchUserData();
   };
 
 
-
-
-
   const { uploadToCloudinary, isUploading } = useCloudinaryUpload();
 
 	const handleImageUpload = async () => {
   let result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ["images", "videos"],
-    allowsMultipleSelection: false, // Only one profile image
+    mediaTypes: ["images"],
+    allowsMultipleSelection: false, 
     allowsEditing: true,
     quality: 1,
   });
+
 
   if (!result.canceled && result.assets && result.assets.length > 0) {
     Toast.show({ type: "info", text1: "Uploading...", text2: "Updating your Profile" });

@@ -2,39 +2,22 @@ import { MarketPlaceService } from "@/api/MarketPlace";
 import CustomHeader from "@/components/CustomHeader";
 import FilterModal from "@/components/FilterModal";
 import PromptCard from "@/components/PromptCard";
+import { Prompt } from "@/interfaces/Prompt";
+import { useAppSelector } from "@/redux/hook";
+import { RootState } from "@/redux/store";
 import { LinearGradient } from "expo-linear-gradient";
 import { Check, Filter, Search, TrendingUp } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
-import { Razorpay, RazorpayCheckout } from "react-native-razorpay";
+import RazorpayCheckout from "react-native-razorpay";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
-
-interface Author {
-	name: string;
-}
-
-interface Prompt {
-	id: number;
-	title: string;
-	description: string;
-	category: string;
-	price: number;
-	rating: number;
-	likesCount: number;
-	author: Author;
-	content: string;
-	userPrompt: string;
-	modelUsed: string;
-	systemPrompt: string;
-	outputImage: string[];
-	outputText: string;
-	isActivate: boolean;
-}
 
 const categories = ["All", "Writing", "Coding", "Productivity", "Education", "Design", "Marketing", "Fun", "Other"];
 
 export default function MarketplaceScreen() {
+	const user = useAppSelector((state: RootState) => state.user);
+
 	const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [selectedCategory, setSelectedCategory] = useState("All");
@@ -44,12 +27,10 @@ export default function MarketplaceScreen() {
 	const [prompts, setPrompts] = useState<Prompt[]>([]);
 	const [loading, setLoading] = useState(false);
 	const [showFilterModal, setShowFilterModal] = useState(false);
-	const [showQRModal, setShowQRModal] = useState(false);
 	const [isBuying, setIsBuying] = useState(false);
 	const [paymentDone, setPaymentDone] = useState(false);
 	const [copied, setCopied] = useState(false);
-	const upiId = "aaryanmeena96-1@okicici";
-	const qrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=upi://pay?pa=yourupi@bank&pn=PromptMarket";
+
 
 	const [currentFilters, setCurrentFilters] = useState({
 		sortBy: "newest",
@@ -132,81 +113,65 @@ export default function MarketplaceScreen() {
 	const handlePurchasePrompt = async (price: any) => {
 		if (!selectedPrompt) return;
 
-		setPaymentDone(false);
+		
 		setCopied(false);
 
-		var instance = new Razorpay({ key_id: process.env.EXPO_PUBLIC_RAZORPAY_ID, key_secret: process.env.EXPO_PUBLIC_RAZORPAY_KEY });
-
-		const response = instance.orders.create({
-			amount: price*100,
-			currency: "INR",
-			receipt: "receipt#1",
-			partial_payment: false,
-			notes: {
-				key1: "value3",
-				key2: "value2",
-			},
-		});
-
-    console.log(" razor pay response is",response);
-
-		var options = {
+		let options = {
 			description: "Prompt Purchase",
 			image: "https://i.imgur.com/3g7nmJC.jpg",
 			currency: "INR",
-			key: process.env.EXPO_PUBLIC_RAZORPAY_ID,
+			key: process.env.EXPO_PUBLIC_RAZORPAY_ID || "",
 			amount: price * 100,
-			name: "Acme Corp",
-			order_id: "order_DslnoIgkIDL8Zt", 
+			name: "PromptX",
+			order_id: "",
 			prefill: {
-				email: "gaurav.kumar@example.com",
-				contact: "9191919191",
-				name: "Gaurav Kumar",
+				email: user.email || "",
+				name: user.name || "",
 			},
 			theme: { color: "#53a20e" },
 		};
+
 		RazorpayCheckout.open(options)
 			.then((data: any) => {
-				alert(`Success: ${data.razorpay_payment_id}`);
+				// alert(`Success: ${data.razorpay_payment_id}`);
+				Toast.show({
+					type: "success",
+					text1: "Payment Successfull",
+					text2: "you can use prompt now!",
+				});
 			})
 			.catch((error: any) => {
-				alert(`Error: ${error.code} | ${error.description}`);
-			});
-
-		setTimeout(async () => {
-			try {
-				setIsBuying(true);
-				const response = await MarketPlaceService.purchasePrompt(selectedPrompt.id);
-
-				if (response.success) {
-					setPaymentDone(true);
-					// Update the prompt's purchase status
-					setPrompts((prev) =>
-						prev.map((prompt) => (prompt.id === selectedPrompt.id ? { ...prompt, isActivate: true } : prompt))
-					);
-
-					// Close modals after delay
-					setIsBuying(false);
-				}
-			} catch (error) {
+				// alert(`Error: ${error.code} | ${error.description}`);
 				Toast.show({
 					type: "error",
-					text1: "Purchase Failed",
-					text2: "There was an error processing your purchase",
+					text1: "Payment Failed",
+					text2: "Failed to purchase Prompt",
 				});
+			});
+
+		try {
+			setIsBuying(true);
+			const response = await MarketPlaceService.purchasePrompt(selectedPrompt.id);
+
+			if (response.success) {
+				
+				// Update the prompt's purchase status
+				setPrompts((prev) =>
+					prev.map((prompt) => (prompt.id === selectedPrompt.id ? { ...prompt, isActivate: true } : prompt))
+				);
+
+				// Close modals after delay
 				setIsBuying(false);
 			}
-		}, 1000);
-	};
-
-	useEffect(() => {
-		if (paymentDone) {
-			const timer = setTimeout(() => {
-				setIsBuying(false);
-			}, 1000);
-			return () => clearTimeout(timer);
+		} catch (error) {
+			Toast.show({
+				type: "error",
+				text1: "Purchase Failed",
+				text2: "There was an error processing your purchase",
+			});
+			setIsBuying(false);
 		}
-	}, [paymentDone]);
+	};
 
 	return (
 		<LinearGradient
@@ -457,54 +422,6 @@ export default function MarketplaceScreen() {
 					</View>
 				</Modal>
 
-				{/* QR Payment Modal */}
-				{/* <Modal
-          visible={showQRModal}
-          transparent
-          animationType="slide"
-          onRequestClose={() => !isBuying }
-        >
-          <View style={styles.qrModalOverlay}>
-            <View style={styles.qrModalContent}>
-              <TouchableOpacity
-                style={styles.qrModalClose}
-                onPress={() => !isBuying}
-                disabled={isBuying}
-              >
-                <X size={22} color="#64748B" />
-              </TouchableOpacity>
-              <Text style={styles.qrModalTitle}>Scan & Pay</Text>
-              <Image
-                source={{ uri: qrCodeUrl }}
-                style={styles.qrImage}
-                resizeMode="contain"
-              />
-
-              <View>
-                <View style={styles.qrUPIRow}>
-                  <Text style={styles.qrUPIText}>{upiId}</Text>
-                  <TouchableOpacity onPress={handleCopyUPI} style={styles.qrCopyButton}>
-                    {copied ? (
-                      <Check size={18} color="#22C55E" />
-                    ) : (
-                      <Text style={styles.qrCopyText}>Copy</Text>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              </View>
-              
-              {isBuying ? (
-                <View style={styles.loadingPayment}>
-                  <ActivityIndicator size="small" color="#8B5CF6" />
-                  <Text style={styles.loadingPaymentText}>Processing payment...</Text>
-                </View>
-              ) : (
-                <Text style={styles.qrNote}>Scan this QR-code for payment</Text>
-              )}
-            </View>
-          </View>
-        </Modal> */}
-
 				<FilterModal
 					visible={showFilterModal}
 					onClose={() => setShowFilterModal(false)}
@@ -518,8 +435,6 @@ export default function MarketplaceScreen() {
 		</LinearGradient>
 	);
 }
-
-// ... (keep your existing styles)
 
 const styles = StyleSheet.create({
 	container: {

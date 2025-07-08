@@ -1,7 +1,10 @@
+import CustomHeader from "@/components/CustomHeader";
+import { useAppSelector } from "@/redux/hook";
+import { RootState } from "@/redux/store";
 import { LinearGradient } from "expo-linear-gradient";
 import { Check, Crown, Star, Zap } from "lucide-react-native";
-import React, { useEffect, useRef, useState } from "react";
-import { Alert, Image, Modal } from "react-native";
+import React, { useState } from "react";
+import { Modal } from "react-native";
 
 import { Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -10,7 +13,7 @@ import Toast from "react-native-toast-message";
 const { width, height } = Dimensions.get("window");
 const CARD_WIDTH = Math.min(width * 0.8, 350); // Max width of 350 for larger screens
 const CARD_MARGIN = width * 0.02;
-const PEEK_WIDTH = width * 0.1;
+
 
 const pricingPlans = [
 	{
@@ -76,23 +79,10 @@ const pricingPlans = [
 ];
 
 export default function PricingScreen() {
-	const scrollViewRef = useRef<ScrollView>(null);
+
+	const user = useAppSelector((state: RootState) => state.user);
 	const [showPaymentModal, setShowPaymentModal] = useState(false);
 	const [selectedPlan, setSelectedPlan] = useState<any>(null);
-	const [copied, setCopied] = useState(false);
-
-	const upiId = "yourupi@bank";
-	const qrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=upi://pay?pa=yourupi@bank&pn=PromptMarket";
-
-	useEffect(() => {
-		// Scroll to the second card (Premium) when component mounts
-		setTimeout(() => {
-			scrollViewRef.current?.scrollTo({
-				x: CARD_WIDTH + CARD_MARGIN * 2 - PEEK_WIDTH,
-				animated: false,
-			});
-		}, 50);
-	}, []);
 
 	const handlePlanSelect = (planId: string) => {
 		const plan = pricingPlans.find((p) => p.id === planId);
@@ -101,47 +91,77 @@ export default function PricingScreen() {
 			setShowPaymentModal(true);
 		} else {
 			// Handle free plan or other logic
-      Toast.show({
-        type:'info',
-        text1:'Plan already activated',
-        text2:'You are already on the Free plan.'
-      })
+			Toast.show({
+				type: "info",
+				text1: "Plan already activated",
+				text2: "You are already on the Free plan.",
+			});
 		}
 	};
-	const handleCopyUPI = async () => {
-		// await Clipboard.setStringAsync(upiId);
-		setCopied(true);
-		setTimeout(() => setCopied(false), 1200);
+
+	const GetSubscription = (selectedPlan:any) => {
+    //    let options = {
+	// 		description: "Prompt Purchase",
+	// 		image: "https://i.imgur.com/3g7nmJC.jpg",
+	// 		currency: "INR",
+	// 		key: process.env.EXPO_PUBLIC_RAZORPAY_ID || "",
+	// 		amount: selectedPlan.price*100,
+	// 		name: "PromptX",
+	// 		order_id: "",
+	// 		prefill: {
+	// 			email: user.email || "",
+	// 			name: user.name || "",
+	// 		},
+	// 		theme: { color: "#53a20e" },
+	// 	};
+
+	// 	RazorpayCheckout.open(options)
+	// 		.then((data: any) => {
+	// 			// alert(`Success: ${data.razorpay_payment_id}`);
+	// 			Toast.show({
+	// 				type: "success",
+	// 				text1: "Payment Successfull",
+	// 				text2: "you can use prompt now!",
+	// 			});
+	// 		})
+	// 		.catch((error: any) => {
+	// 			// alert(`Error: ${error.code} | ${error.description}`);
+	// 			Toast.show({
+	// 				type: "error",
+	// 				text1: "Payment Failed",
+	// 				text2: "Failed to purchase Prompt",
+	// 			});
+	// 		});
+
+		setShowPaymentModal(false);
+		Toast.show({
+			type: "info",
+			text1: "Thank you!",
+			text2: "We are working on it",
+		});
 	};
 
 	return (
 		<LinearGradient
 			colors={["#F5F7FF", "#E8ECFF"]}
 			style={styles.container}>
+				<CustomHeader />
 			<SafeAreaView style={styles.safeArea}>
+				
 				<ScrollView contentContainerStyle={styles.scrollContent}>
-					<View style={styles.carouselContainer}>
-						<ScrollView
-							ref={scrollViewRef}
-							horizontal
-							showsHorizontalScrollIndicator={false}
-							contentContainerStyle={[styles.horizontalScroll, { paddingHorizontal: PEEK_WIDTH }]}
-							snapToInterval={CARD_WIDTH + CARD_MARGIN * 2}
-							decelerationRate='fast'>
+					<ScrollView style={styles.PriceScrollContainer}>
+						<View style={styles.columnContainer}>
 							{pricingPlans.map((plan, index) => (
 								<View
 									key={plan.id}
 									style={[
 										styles.planCard,
-										index === 1 && styles.highlightedCard,
+										index === 1 && styles.highlightedCard, // Highlight the middle card
 										{
 											width: CARD_WIDTH,
-											marginHorizontal: CARD_MARGIN,
-											// Scale down non-center cards slightly
-											transform: [
-												{ translateY: index === 1 ? -height * 0.025 : 0 },
-												{ scale: index === 1 ? 1 : 0.95 },
-											],
+											marginBottom: CARD_MARGIN * 2,
+											alignSelf: "center",
+											transform: [{ scale: index === 1 ? 1.05 : 1 }], // Slightly scale up the middle card
 										},
 									]}>
 									{plan.popular && (
@@ -204,9 +224,8 @@ export default function PricingScreen() {
 									</View>
 								</View>
 							))}
-						</ScrollView>
-					</View>
-
+						</View>
+					</ScrollView>
 					<View style={styles.faqContainer}>
 						<Text style={styles.faqTitle}>Frequently Asked Questions</Text>
 
@@ -253,6 +272,7 @@ export default function PricingScreen() {
 								alignItems: "center",
 								position: "relative",
 							}}>
+							<View style={styles.modalHandle} />
 							<TouchableOpacity
 								style={{ position: "absolute", right: 12, top: 12, zIndex: 2, padding: 4 }}
 								onPress={() => setShowPaymentModal(false)}>
@@ -290,42 +310,7 @@ export default function PricingScreen() {
 									</View>
 								))}
 							</View>
-							<Text style={{ color: "#7C3AED", fontSize: 18, fontWeight: "bold", marginBottom: 8 }}>
-								Pay {selectedPlan?.price} / {selectedPlan?.period}
-							</Text>
-							<Image
-								source={{ uri: qrCodeUrl }}
-								style={{
-									width: 180,
-									height: 180,
-									marginBottom: 12,
-									borderRadius: 12,
-									backgroundColor: "#F1F5F9",
-								}}
-								resizeMode='contain'
-							/>
-							<Text style={{ fontSize: 15, color: "#6366F1", fontWeight: "bold", marginBottom: 4 }}>
-								UPI ID:
-							</Text>
-							<View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
-								<Text style={{ fontSize: 15, color: "#1E293B", marginRight: 8 }}>{upiId}</Text>
-								<TouchableOpacity
-									onPress={handleCopyUPI}
-									style={{
-										backgroundColor: "#E0E7FF",
-										borderRadius: 8,
-										paddingHorizontal: 10,
-										paddingVertical: 4,
-										marginLeft: 4,
-									}}>
-									<Text style={{ color: "#6366F1", fontSize: 13 }}>
-										{copied ? "Copied!" : "Copy"}
-									</Text>
-								</TouchableOpacity>
-							</View>
-							<Text style={{ color: "#64748B", fontSize: 13, textAlign: "center", marginBottom: 8 }}>
-								After payment, contact support or tap "I have paid".
-							</Text>
+
 							<TouchableOpacity
 								style={{
 									width: "100%",
@@ -335,11 +320,10 @@ export default function PricingScreen() {
 									paddingVertical: 12,
 									alignItems: "center",
 								}}
-								onPress={() => {
-									setShowPaymentModal(false);
-									Alert.alert("Thank you!", "Your payment will be verified soon.");
-								}}>
-								<Text style={{ color: "#fff", fontWeight: "bold", fontSize: 16 }}>I have paid</Text>
+								onPress={()=>{GetSubscription(selectedPlan)}}>
+								<Text style={{ color: "#fff", fontWeight: "bold", fontSize: 16 }}>
+									Get SubScription
+								</Text>
 							</TouchableOpacity>
 						</View>
 					</View>
@@ -352,23 +336,34 @@ export default function PricingScreen() {
 const styles = StyleSheet.create({
 	container: {
 		flex: 1,
+		paddingTop:28,
 		backgroundColor: "#F5F7FF",
 	},
 	safeArea: {
 		flex: 1,
-		marginTop: height * 0.012,
+		flexDirection: "row",
+		
 	},
 	scrollContent: {
 		paddingBottom: height * 0.05,
 	},
-	carouselContainer: {
-		width: "100%",
-	},
-	header: {
-		paddingHorizontal: width * 0.025,
-		paddingVertical: height * 0.012,
+	carouselContainer: {},
+	columnContainer: {
 		alignItems: "center",
+		gap: 10,
 	},
+
+	PriceScrollContainer: {},
+	modalHandle: {
+		width: 40,
+		height: 5,
+		backgroundColor: "#E2E8F0",
+		borderRadius: 3,
+		alignSelf: "center",
+		marginTop: 5,
+		marginBottom: 5,
+	},
+	
 	title: {
 		color: "#1E293B",
 		fontSize: Math.max(width * 0.07, 24),
@@ -398,7 +393,6 @@ const styles = StyleSheet.create({
 		elevation: 5,
 		borderWidth: 1,
 		borderColor: "#E2E8F0",
-		minHeight: height * 0.65,
 	},
 	highlightedCard: {
 		shadowColor: "#8B5CF6",

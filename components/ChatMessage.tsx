@@ -1,5 +1,6 @@
+import * as Clipboard from 'expo-clipboard';
 import * as Speech from "expo-speech";
-import { Volume2, VolumeX } from "lucide-react-native";
+import { Copy, Volume2, VolumeX } from "lucide-react-native";
 import React, { useRef, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
@@ -16,6 +17,7 @@ export default function ChatMessage({
 }: ChatMessageProps) {
 
   const [isSpeaking, setIsSpeaking] = useState(false);
+   const [copiedText, setCopiedText] = useState('');
   const speakingRef = useRef(false);
 
   const speakMessage = () => {
@@ -61,7 +63,10 @@ export default function ChatMessage({
       speakingRef.current = false;
     }
   };
-
+  
+  const copyToClipBoard = async(data:string)=>{
+     await Clipboard.setStringAsync(data);
+  }
 
   // Enhanced function to render formatted message
   const renderFormattedMessage = (text: string) => {
@@ -189,6 +194,16 @@ export default function ChatMessage({
               <Volume2 size={16} color="#8B5CF6" />
             )}
           </TouchableOpacity>
+          <TouchableOpacity
+  style={styles.copyButton}
+  onPress={() => {
+    copyToClipBoard(message);
+    setCopiedText('copied');
+    setTimeout(() => setCopiedText(''), 1200);
+  }}
+>
+  <Copy size={16} color={copiedText === 'copied' ? "#10B981" : "#8B5CF6"} />
+</TouchableOpacity>
         </View>
       )}
       <Text style={styles.timestamp}>
@@ -219,6 +234,11 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     backgroundColor: "#FFFFFF",
   },
+  copyButton: {
+  marginLeft: 8,
+  padding: 4,
+  marginTop: 4,
+},
   messageBox: {
     paddingHorizontal: 16,
     paddingVertical: 12,

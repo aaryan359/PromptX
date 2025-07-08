@@ -11,6 +11,7 @@ export const toastConfig = {
         left: '5%',
         right: '5%',
         minHeight: 52,
+        zIndex:15,
         backgroundColor: '#ECFDF3',
         borderLeftColor: '#12B76A',
         borderLeftWidth: 4,
