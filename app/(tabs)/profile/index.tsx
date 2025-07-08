@@ -11,6 +11,7 @@ import { Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } fr
 import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
+
 export default function ProfileScreen() {
   const dispatch = useAppDispatch();
   const [activeModal, setActiveModal] = useState<string | null>(null);

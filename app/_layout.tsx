@@ -21,7 +21,6 @@ function AppContent() {
   const { isAuthenticated, loading } = useAppSelector((state) => state.auth);
 
   useEffect(() => {
-  
       configureGoogleSignIn();
       dispatch(checkAuth());
   
@@ -50,7 +49,7 @@ function AppContent() {
     return null;
   }
 
-
+  
   console.log('Rendering navigation - isAuthenticated:', isAuthenticated);
 
   return (
@@ -58,12 +57,13 @@ function AppContent() {
     {isAuthenticated ? (
       
       <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name='(tabs)' />
-      </Stack>
-        
-    ) : (
-      <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name='(auth)' />
+      </Stack>
+       
+    ) : (
+      
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name='(tabs)' />
       </Stack>
     )}
     <Toast

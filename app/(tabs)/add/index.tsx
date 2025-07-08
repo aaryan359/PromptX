@@ -5,17 +5,17 @@ import * as ImagePicker from "expo-image-picker";
 import { UploadCloud, X } from "lucide-react-native";
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
-  Dimensions,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+	ActivityIndicator,
+	Dimensions,
+	Image,
+	KeyboardAvoidingView,
+	Platform,
+	ScrollView,
+	StyleSheet,
+	Text,
+	TextInput,
+	TouchableOpacity,
+	View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
@@ -42,7 +42,7 @@ export default function AddPromptScreen() {
 	const [isFree, setIsFree] = useState(true);
 	const [outputImages, setOutputImages] = useState<string[]>([]);
 	const [outputText, setOutputText] = useState("");
-  const [isLoading ,setIsloading] = useState(false);
+	const [isLoading, setIsloading] = useState(false);
 	const { uploadToCloudinary, isUploading } = useCloudinaryUpload();
 
 	const handleImageUpload = async () => {
@@ -103,7 +103,7 @@ export default function AddPromptScreen() {
 			});
 			return;
 		}
-    setIsloading(true);
+		setIsloading(true);
 		try {
 			const priceFloat = parseFloat(price);
 			const promptData = {
@@ -126,7 +126,7 @@ export default function AddPromptScreen() {
 					text2: "Your prompt has been added to the market!",
 				});
 			}
-      setIsloading(false);
+			setIsloading(false);
 
 			setPromptTitle("");
 			setOutputImages([]);
@@ -138,14 +138,13 @@ export default function AddPromptScreen() {
 			setUserPrompt("");
 			setIsFree(true);
 			setSelectedModel(MODELS[0].value);
-
 		} catch (error: any) {
 			Toast.show({
 				type: "error",
 				text1: "failed to add prompt",
 				text2: error.message,
 			});
-      setIsloading(false);
+			setIsloading(false);
 		}
 	};
 
@@ -381,22 +380,23 @@ export default function AddPromptScreen() {
 							/>
 						</View>
 
-      { !isLoading ?   <TouchableOpacity
-            style={styles.submitButton}
-            onPress={handleSubmit}>
-            <Text style={styles.submitButtonText}>Submit Prompt</Text>
-          </TouchableOpacity>
-          :
-          <TouchableOpacity>
-           <Text style={styles.submitButtonText}>Submiting </Text>
-										<View style={{ marginLeft: 8 }}>
-											<ActivityIndicator
-												size='small'
-												color='#6366F1'
-											/>
-										</View>
-          </TouchableOpacity>
-          }
+						{!isLoading ? (
+							<TouchableOpacity
+								style={styles.submitButton}
+								onPress={handleSubmit}>
+								<Text style={styles.submitButtonText}>Submit Prompt</Text>
+							</TouchableOpacity>
+						) : (
+							<TouchableOpacity>
+								<Text style={styles.submitButtonText}>Submiting </Text>
+								<View style={{ marginLeft: 8 }}>
+									<ActivityIndicator
+										size='small'
+										color='#6366F1'
+									/>
+								</View>
+							</TouchableOpacity>
+						)}
 					</ScrollView>
 				</KeyboardAvoidingView>
 			</SafeAreaView>

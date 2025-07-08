@@ -99,13 +99,17 @@ export const googleOauth = createAsyncThunk(
   }
 )
 
+
 export const logout = createAsyncThunk(
   'auth/logout',
   async (_, { rejectWithValue }) => {
     try {
-      await removeToken();
-      await removeUserData();
-      return null;
+      const token  = await getToken();
+      if(token){
+        await removeToken();
+        await removeUserData();
+      }
+      return;
     } catch (error: any) {
       Toast.show({
         type: 'error',
@@ -116,6 +120,8 @@ export const logout = createAsyncThunk(
   }
 );
 
+
+
 export const checkAuth = createAsyncThunk(
   'auth/checkAuth',
   async (_, { rejectWithValue, dispatch }) => {
@@ -123,7 +129,6 @@ export const checkAuth = createAsyncThunk(
       const token = await getToken();
       console.log("token in checkauth", token)
       if (!token) return rejectWithValue('No token found');
-
 
       const response = await AuthService.checkAuthentication();
 
@@ -136,13 +141,16 @@ export const checkAuth = createAsyncThunk(
         return token;
       }
       else {
-        await removeToken();
-        await removeUserData();
+        router.replace('/(auth)/login')
         return;
       }
     } catch (error: any) {
-      await removeToken();
-      await removeUserData();
+      const token = await getToken();
+      if(token){
+        await removeToken();
+        await removeUserData();
+      }   
+      router.replace('/(auth)/login') 
       return;
     }
   }

@@ -29,6 +29,24 @@ export const MarketPlaceService = {
             { promptId }
         );
         return response.data;
-    }
+    },
+    async createRazorpayOrder(orderData: {
+    amount: number;
+    currency: string;
+    receipt: string;
+   }) {
+    const response =  await apiClient.post('/payments/create-order', orderData);
+    return response.data;
+  },
+
+  async verifyRazorpayPayment(paymentData: {
+    razorpay_payment_id: string;
+    razorpay_order_id: string;
+    razorpay_signature: string;
+    promptId: number;
+  }) {
+    const response  = await apiClient.post('/payments/verify', paymentData);
+    return response.data;
+  }
 
 }
