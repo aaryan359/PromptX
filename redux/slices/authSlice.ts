@@ -1,6 +1,5 @@
 import { AuthService } from '@/api/Auth';
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
-import { router } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { getToken, removeToken, storeToken } from '../helperFunctions/authslice-functions';
 import { removeUserData } from '../helperFunctions/userSlice-functions';
@@ -28,14 +27,23 @@ const initialState: AuthState = {
 // Thunks
 export const login = createAsyncThunk(
   'auth/login',
-  async (credentials: { email: string; password: string }, { rejectWithValue }) => {
+  async (credentials: { email: string; password: string }, { rejectWithValue, dispatch }) => {
     try {
-      // Replace with actual API call
-      const response = { token: 'sample-token', user: { id: '1', name: 'Test User' } };
-      await storeToken(response.token);
-      return { token: response.token, user: response.user };
+      const response = await AuthService.login(credentials);
+      const payload = response?.data ?? response;
+
+      if (!payload?.token) {
+        return rejectWithValue(payload?.message || 'Login failed');
+      }
+
+      await storeToken(payload.token);
+      if (payload?.user) {
+        dispatch(setUser(payload.user));
+      }
+
+      return { token: payload.token, user: payload.user };
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Login failed');
+      return rejectWithValue(error?.message || error?.response?.data?.message || 'Login failed');
     }
   }
 );
@@ -50,19 +58,22 @@ export const register = createAsyncThunk(
   ) => {
     try {
       const response = await AuthService.register(userData);
-      console.log('Registration response: in authslice', response);
+      const payload = response?.data ?? response;
+      console.log('Registration response: in authslice', payload);
 
-      if (response?.data.token) {
-        await storeToken(response.data.token);
-        console.log('User token stored', response.data.token);
+      if (!payload?.token) {
+        return rejectWithValue(payload?.message || 'Registration failed');
       }
+
+      await storeToken(payload.token);
+      console.log('User token stored', payload.token);
 
       // Set user data after successful signup
-      if (response?.data.newUser) {
-        console.log('New user data:', response.data.newUser);
-        dispatch(setUser(response.data.newUser));
+      if (payload?.newUser) {
+        console.log('New user data:', payload.newUser);
+        dispatch(setUser(payload.newUser));
       }
-      return response.data;
+      return payload;
 
     } catch (error: any) {
       Toast.show({
@@ -70,6 +81,7 @@ export const register = createAsyncThunk(
         text1: 'Registration Failed',
         text2: error.response?.data?.message,
       });
+      return rejectWithValue(error?.response?.data?.message || error?.message || 'Registration failed');
     }
   }
 );
@@ -81,20 +93,27 @@ export const register = createAsyncThunk(
 export const googleOauth = createAsyncThunk(
   'auth/googleLogin',
   async (
-    { idToken, user }: { idToken: string; user: any },{dispatch}
+    { idToken, user }: { idToken: string; user: any },{dispatch, rejectWithValue}
   ) => {
     try {
       const response = await AuthService.googleLogin(idToken, user);
-      console.log("response data",response)
-      await storeToken(response.data.token);
-      dispatch(setUser(response.data.user));
-      return { token: response.data.token, user: response.data.user };
+      const payload = response?.data ?? response;
+      console.log("response data",payload)
+
+      if (!payload?.token) {
+        return rejectWithValue(payload?.message || 'Google Sign In Failed');
+      }
+
+      await storeToken(payload.token);
+      dispatch(setUser(payload.user));
+      return { token: payload.token, user: payload.user };
     } catch (error: any) {
       Toast.show({
         type: 'error',
         text1: 'Google Sigin Failed',
         text2: error.response?.data?.message,
       });
+      return rejectWithValue(error?.response?.data?.message || error?.message || 'Google Sign In Failed');
       }
   }
 )
@@ -137,21 +156,19 @@ export const checkAuth = createAsyncThunk(
       if (response.success) {
         dispatch(setUser(response.data))
         await storeToken(token)
-        router.replace('/(tabs)')
         return token;
       }
-      else {
-        router.replace('/(auth)/login')
-        return;
-      }
+
+      await removeToken();
+      await removeUserData();
+      return rejectWithValue(response?.message || 'Unauthorized');
     } catch (error: any) {
       const token = await getToken();
       if(token){
         await removeToken();
         await removeUserData();
-      }   
-      router.replace('/(auth)/login') 
-      return;
+      }
+      return rejectWithValue(error?.response?.data?.message || error?.message || 'Unauthorized');
     }
   }
 );

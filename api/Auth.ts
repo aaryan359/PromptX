@@ -13,8 +13,16 @@ export const AuthService = {
             const response = await apiClient.post("/api/v1/users/login", data);
             return response.data;
         } catch (error: any) {
-            console.error("Login Error:", error);
-            throw error.response?.data || error;
+            const statusCode = error?.response?.status;
+            const backendMessage = error?.response?.data?.message;
+
+            if (statusCode === 404) {
+                throw new Error(
+                    "Backend login route is missing. Add POST /api/v1/users/login in backend routes/userRoutes.js",
+                );
+            }
+
+            throw new Error(backendMessage || error?.message || "Login failed");
         }
     },
 

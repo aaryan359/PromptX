@@ -4,16 +4,7 @@ import { googleLogin } from "@/utils/GoogleSiginIn";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import {
-	Alert,
-	Image,
-	ScrollView,
-	StyleSheet,
-	Text,
-	TextInput,
-	TouchableOpacity,
-	View,
-} from "react-native";
+import { Alert, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
@@ -36,7 +27,7 @@ export default function AuthScreen() {
 			const { idToken, user } = await googleLogin();
 			console.log(" id toke and user is", idToken, user);
 
-			const result = await dispatch(googleOauth({ idToken, user}));
+			const result = await dispatch(googleOauth({ idToken, user }));
 
 			console.log(" result of google auth is", result);
 
@@ -49,16 +40,15 @@ export default function AuthScreen() {
 				});
 			}
 			setLoading(false);
-			router.replace('/(tabs)')
+			router.replace("/(tabs)");
 		} catch (err: any) {
 			console.error("Google Sign-In Error:", err);
+			const errorMessage = err?.errors?.[0]?.message || err?.message || "Unable to sign in with Google.";
 			Toast.show({
-				type:'error',
-				text1:'Google Auth Failed',
-				text2:err.errors[0].message
-
-			})
-			
+				type: "error",
+				text1: "Google Auth Failed",
+				text2: errorMessage,
+			});
 		} finally {
 			setLoading(false);
 		}
@@ -81,21 +71,22 @@ export default function AuthScreen() {
 					email,
 					password,
 					name,
-				})
+				}),
 			);
 
-			response.payload = response.payload as any;
-			if (response.payload?.token) {
+			if (register.fulfilled.match(response)) {
 				Toast.show({
 					type: "success",
 					text1: "Registration Successful",
-					text2: "You can now login",
+					text2: "Welcome!",
 				});
-			} else if (response.payload?.message) {
+				router.replace("/(tabs)");
+			} else {
+				const message = (response.payload as any)?.message || "Registration failed";
 				Toast.show({
 					type: "error",
 					text1: "Registration Failed",
-					text2: response.payload.message,
+					text2: message,
 				});
 				return;
 			}
@@ -112,143 +103,80 @@ export default function AuthScreen() {
 		<SafeAreaView style={styles.safeArea}>
 			<ScrollView contentContainerStyle={styles.container}>
 				<View style={styles.header}>
-					<Text style={styles.title}>
-						Welcome to PromptX
-					</Text>
-					<Text style={styles.subtitle}>
-						Your AI prompt marketplace
-					</Text>
+					<Text style={styles.title}>Welcome to PromptX</Text>
+					<Text style={styles.subtitle}>Your AI prompt marketplace</Text>
 				</View>
 
 				<View style={styles.form}>
 					<View style={styles.form}>
-						<View
-							style={
-								styles.inputContainer
-							}>
+						<View style={styles.inputContainer}>
 							<Ionicons
-								name="person-outline"
+								name='person-outline'
 								size={20}
-								color="#64748B"
-								style={
-									styles.inputIcon
-								}
+								color='#64748B'
+								style={styles.inputIcon}
 							/>
 							<TextInput
-								style={
-									styles.input
-								}
-								placeholder="Name"
-								placeholderTextColor="#94A3B8"
+								style={styles.input}
+								placeholder='Name'
+								placeholderTextColor='#94A3B8'
 								value={name}
-								onChangeText={
-									setName
-								}
-								keyboardType="email-address"
-								autoCapitalize="none"
+								onChangeText={setName}
+								keyboardType='email-address'
+								autoCapitalize='none'
 							/>
 						</View>
-						<View
-							style={
-								styles.inputContainer
-							}>
+						<View style={styles.inputContainer}>
 							<Ionicons
-								name="mail-outline"
+								name='mail-outline'
 								size={20}
-								color="#64748B"
-								style={
-									styles.inputIcon
-								}
+								color='#64748B'
+								style={styles.inputIcon}
 							/>
 							<TextInput
-								style={
-									styles.input
-								}
-								placeholder="Email"
-								placeholderTextColor="#94A3B8"
+								style={styles.input}
+								placeholder='Email'
+								placeholderTextColor='#94A3B8'
 								value={email}
-								onChangeText={
-									setEmail
-								}
-								keyboardType="email-address"
-								autoCapitalize="none"
+								onChangeText={setEmail}
+								keyboardType='email-address'
+								autoCapitalize='none'
 							/>
 						</View>
 
-						<View
-							style={
-								styles.inputContainer
-							}>
+						<View style={styles.inputContainer}>
 							<Ionicons
-								name="lock-closed-outline"
+								name='lock-closed-outline'
 								size={20}
-								color="#64748B"
-								style={
-									styles.inputIcon
-								}
+								color='#64748B'
+								style={styles.inputIcon}
 							/>
 							<TextInput
-								style={
-									styles.input
-								}
-								placeholder="Password"
-								placeholderTextColor="#94A3B8"
+								style={styles.input}
+								placeholder='Password'
+								placeholderTextColor='#94A3B8'
 								value={password}
-								onChangeText={
-									setPassword
-								}
+								onChangeText={setPassword}
 								secureTextEntry
 							/>
 						</View>
 
-						<TouchableOpacity
-							style={
-								styles.forgotPassword
-							}>
-							<Text
-								style={
-									styles.forgotPasswordText
-								}>
-								Forgot password?
-							</Text>
+						<TouchableOpacity style={styles.forgotPassword}>
+							<Text style={styles.forgotPasswordText}>Forgot password?</Text>
 						</TouchableOpacity>
 
 						<TouchableOpacity
-							style={
-								styles.primaryButton
-							}
-							onPress={
-								HandleRegisterWithEmail
-							}
+							style={styles.primaryButton}
+							onPress={HandleRegisterWithEmail}
 							disabled={loading}>
-							<Text
-								style={
-									styles.primaryButtonText
-								}>
-								{loading
-									? "Signing in..."
-									: "Sign In"}
-							</Text>
+							<Text style={styles.primaryButtonText}>{loading ? "Signing in..." : "Sign In"}</Text>
 						</TouchableOpacity>
 					</View>
 
 					<View style={styles.dividerContainer}>
-						<View
-							style={
-								styles.dividerLine
-							}
-						/>
-						<Text
-							style={
-								styles.dividerText
-							}>
-							OR
-						</Text>
-						<View
-							style={
-								styles.dividerLine
-							}
-						/>
+						<View style={styles.dividerLine} />
+						<Text style={styles.dividerText}>OR</Text>
+						<View style={styles.dividerLine} />
 					</View>
 					<TouchableOpacity
 						style={styles.socialButton}
@@ -256,28 +184,15 @@ export default function AuthScreen() {
 						disabled={loading}>
 						<Image
 							source={require("../../../assets/images/googleicon.png")}
-							style={
-								styles.socialIcon
-							}
+							style={styles.socialIcon}
 						/>
-						<Text
-							style={
-								styles.socialButtonText
-							}>
-							{loading
-								? "Signing in..."
-								: "Continue with Google"}
-						</Text>
+						<Text style={styles.socialButtonText}>{loading ? "Signing in..." : "Continue with Google"}</Text>
 					</TouchableOpacity>
 				</View>
 				<View>
 					<Text style={styles.termsText}>
-						If you already have an account,
-						then Login
-						<TouchableOpacity
-							onPress={() =>
-								router.push("/(auth)/login")
-							}>
+						If you already have an account, then Login
+						<TouchableOpacity onPress={() => router.push("/(auth)/login")}>
 							<Text
 								style={{
 									color: "#6366F1",
