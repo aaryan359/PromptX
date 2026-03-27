@@ -43,6 +43,11 @@ export default function AddPromptScreen() {
 	const [isFree, setIsFree] = useState(true);
 	const [outputImages, setOutputImages] = useState<string[]>([]);
 	const [outputText, setOutputText] = useState("");
+	const [niche, setNiche] = useState("");
+	const [outcomeTitle, setOutcomeTitle] = useState("");
+	const [outcomeMetric, setOutcomeMetric] = useState("");
+	const [outcomeValue, setOutcomeValue] = useState("");
+	const [outcomeProof, setOutcomeProof] = useState("");
 	const [isLoading, setIsloading] = useState(false);
 	const { uploadToCloudinary, isUploading } = useCloudinaryUpload();
 
@@ -64,7 +69,7 @@ export default function AddPromptScreen() {
 					if (uploadResult?.secure_url) {
 						uploadedUrls.push(uploadResult.secure_url);
 					}
-				} catch (e) {
+				} catch {
 					Toast.show({ type: "error", text1: "Upload failed", text2: "Some files could not be uploaded." });
 				}
 			}
@@ -118,6 +123,11 @@ export default function AddPromptScreen() {
 				price: priceFloat,
 				outputText,
 				outputImages,
+				niche,
+				outcomeTitle,
+				outcomeMetric,
+				outcomeValue,
+				outcomeProof,
 			};
 			const response = await MarketPlaceService.AddPrompt(promptData);
 			if (response.success) {
@@ -133,6 +143,11 @@ export default function AddPromptScreen() {
 			setOutputImages([]);
 			setIsFree(false);
 			setOutputText("");
+			setNiche("");
+			setOutcomeTitle("");
+			setOutcomeMetric("");
+			setOutcomeValue("");
+			setOutcomeProof("");
 			setPromptDescription("");
 			setSelectedCategory(CATEGORIES[0]);
 			setSystemPrompt("");
@@ -152,7 +167,7 @@ export default function AddPromptScreen() {
 	return (
 		<View style={styles.container}>
 			<SafeAreaView style={styles.safeArea}>
-				<CustomHeader/>
+				<CustomHeader />
 				<KeyboardAvoidingView
 					style={{ flex: 1, paddingBottom: 30 }}
 					behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -320,7 +335,7 @@ export default function AddPromptScreen() {
 						<View style={styles.section}>
 							<Text style={styles.label}>Output (optional)</Text>
 							<View style={styles.outputRow}>
-								{isUploading ? (
+								{isUploading ?
 									<View style={styles.uploadButton}>
 										<UploadCloud
 											size={width * 0.045}
@@ -334,8 +349,7 @@ export default function AddPromptScreen() {
 											/>
 										</View>
 									</View>
-								) : (
-									<TouchableOpacity
+								:	<TouchableOpacity
 										style={styles.uploadButton}
 										onPress={handleImageUpload}>
 										<UploadCloud
@@ -344,7 +358,7 @@ export default function AddPromptScreen() {
 										/>
 										<Text style={styles.uploadButtonText}>Upload</Text>
 									</TouchableOpacity>
-								)}
+								}
 							</View>
 							<ScrollView
 								horizontal
@@ -382,14 +396,53 @@ export default function AddPromptScreen() {
 							/>
 						</View>
 
-						{!isLoading ? (
+						<View style={styles.section}>
+							<Text style={styles.label}>Outcome-based Listing (optional)</Text>
+							<TextInput
+								style={styles.input}
+								placeholder='Niche (e.g. cold-email, ecommerce, coding)'
+								value={niche}
+								onChangeText={setNiche}
+								placeholderTextColor='#94A3B8'
+							/>
+							<TextInput
+								style={styles.input}
+								placeholder='Outcome title (e.g. 18% reply rate campaign)'
+								value={outcomeTitle}
+								onChangeText={setOutcomeTitle}
+								placeholderTextColor='#94A3B8'
+							/>
+							<TextInput
+								style={styles.input}
+								placeholder='Outcome metric (e.g. reply_rate)'
+								value={outcomeMetric}
+								onChangeText={setOutcomeMetric}
+								placeholderTextColor='#94A3B8'
+							/>
+							<TextInput
+								style={styles.input}
+								placeholder='Outcome value (e.g. 18)'
+								value={outcomeValue}
+								onChangeText={setOutcomeValue}
+								keyboardType='numeric'
+								placeholderTextColor='#94A3B8'
+							/>
+							<TextInput
+								style={styles.input}
+								placeholder='Outcome proof URL or note'
+								value={outcomeProof}
+								onChangeText={setOutcomeProof}
+								placeholderTextColor='#94A3B8'
+							/>
+						</View>
+
+						{!isLoading ?
 							<TouchableOpacity
 								style={styles.submitButton}
 								onPress={handleSubmit}>
 								<Text style={styles.submitButtonText}>Submit Prompt</Text>
 							</TouchableOpacity>
-						) : (
-							<TouchableOpacity>
+						:	<TouchableOpacity>
 								<Text style={styles.submitButtonText}>Submiting </Text>
 								<View style={{ marginLeft: 8 }}>
 									<ActivityIndicator
@@ -398,7 +451,7 @@ export default function AddPromptScreen() {
 									/>
 								</View>
 							</TouchableOpacity>
-						)}
+						}
 					</ScrollView>
 				</KeyboardAvoidingView>
 			</SafeAreaView>

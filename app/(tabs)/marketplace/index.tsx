@@ -1,3 +1,4 @@
+import { InnovationService } from "@/api/Innovation";
 import { MarketPlaceService } from "@/api/MarketPlace";
 import CustomHeader from "@/components/CustomHeader";
 import FilterModal from "@/components/FilterModal";
@@ -7,7 +8,7 @@ import * as Clipboard from "expo-clipboard";
 import { LinearGradient } from "expo-linear-gradient";
 import * as SecureStore from "expo-secure-store";
 import { Bookmark, BookmarkCheck, Check, Filter, Search, Star, TrendingUp } from "lucide-react-native";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
@@ -42,6 +43,7 @@ export default function MarketplaceScreen() {
 	const [loading, setLoading] = useState(false);
 	const [showFilterModal, setShowFilterModal] = useState(false);
 	const [copiedSection, setCopiedSection] = useState<"user" | "system" | null>(null);
+	const [sponsoredAds, setSponsoredAds] = useState<any[]>([]);
 
 	const [likedPrompts, setLikedPrompts] = useState<Set<number>>(new Set());
 	const [dislikedPrompts, setDislikedPrompts] = useState<Set<number>>(new Set());
@@ -76,7 +78,20 @@ export default function MarketplaceScreen() {
 		loadLocalMarketplaceState();
 	}, []);
 
-	const fetchPrompts = async () => {
+	useEffect(() => {
+		const loadSponsoredAds = async () => {
+			try {
+				const response = await InnovationService.getSponsoredAds();
+				setSponsoredAds(response?.data || []);
+			} catch {
+				setSponsoredAds([]);
+			}
+		};
+
+		loadSponsoredAds();
+	}, []);
+
+	const fetchPrompts = useCallback(async () => {
 		setLoading(true);
 		try {
 			const response = await MarketPlaceService.getPromptByQuery(selectedCategory, searchQuery.trim());
@@ -98,7 +113,7 @@ export default function MarketplaceScreen() {
 		} finally {
 			setLoading(false);
 		}
-	};
+	}, [selectedCategory, searchQuery]);
 
 	useEffect(() => {
 		if (debounceTimeout.current) clearTimeout(debounceTimeout.current);
@@ -109,7 +124,7 @@ export default function MarketplaceScreen() {
 		return () => {
 			if (debounceTimeout.current) clearTimeout(debounceTimeout.current);
 		};
-	}, [selectedCategory, searchQuery]);
+	}, [fetchPrompts]);
 
 	const handlePromptPress = (prompt: Prompt) => {
 		setSelectedPrompt(prompt);
@@ -302,6 +317,44 @@ export default function MarketplaceScreen() {
 					</View>
 				</View>
 
+				{sponsoredAds.length > 0 && (
+					<View style={styles.sponsoredSection}>
+						<Text style={styles.sponsoredTitle}>Sponsored Paid Prompts</Text>
+						<ScrollView
+							horizontal
+							showsHorizontalScrollIndicator={false}
+							contentContainerStyle={styles.sponsoredContent}>
+							{sponsoredAds.slice(0, 6).map((ad) => (
+								<TouchableOpacity
+									key={ad.id}
+									style={styles.sponsoredCard}
+									onPress={() => {
+										const selected = prompts.find((prompt) => prompt.id === ad.id);
+										if (selected) handlePromptPress(selected);
+									}}>
+									<Text
+										style={styles.sponsoredCardTitle}
+										numberOfLines={1}>
+										{ad.title}
+									</Text>
+									<Text
+										style={styles.sponsoredCardMeta}
+										numberOfLines={1}>
+										₹{ad.price} • {ad.author?.name || "Creator"}
+									</Text>
+									{!!ad.outcomeTitle && (
+										<Text
+											style={styles.sponsoredOutcome}
+											numberOfLines={1}>
+											{ad.outcomeTitle}
+										</Text>
+									)}
+								</TouchableOpacity>
+							))}
+						</ScrollView>
+					</View>
+				)}
+
 				{loading ?
 					<View style={styles.loaderContainer}>
 						<ActivityIndicator
@@ -319,7 +372,7 @@ export default function MarketplaceScreen() {
 								title={prompt.title}
 								description={prompt.description}
 								category={prompt.category}
-								price={0}
+								price={Number(prompt.price || 0)}
 								rating={prompt.rating}
 								likes={prompt.likesCount + (likedPrompts.has(prompt.id) ? 1 : 0)}
 								dislikes={dislikedPrompts.has(prompt.id) ? 1 : 0}
@@ -393,9 +446,36 @@ export default function MarketplaceScreen() {
 									</View>
 									<View style={styles.metaItem}>
 										<Text style={styles.metaLabel}>Price</Text>
-										<Text style={styles.metaValue}>Free</Text>
+										<Text style={styles.metaValue}>
+											{Number(selectedPrompt?.price || 0) > 0 ?
+												`₹${selectedPrompt?.price}`
+											:	"Free"}
+										</Text>
 									</View>
 								</View>
+
+								{(selectedPrompt?.outcomeTitle ||
+									selectedPrompt?.outcomeMetric ||
+									selectedPrompt?.outcomeValue) && (
+									<View style={styles.section}>
+										<Text style={styles.sectionTitle}>Outcome</Text>
+										<View style={styles.menuItem}>
+											<Text style={styles.menuText}>
+												{selectedPrompt?.outcomeTitle ||
+													"Result-driven listing"}
+												{selectedPrompt?.outcomeMetric ?
+													`\nMetric: ${selectedPrompt.outcomeMetric}`
+												:	""}
+												{typeof selectedPrompt?.outcomeValue === "number" ?
+													`\nValue: ${selectedPrompt.outcomeValue}`
+												:	""}
+												{selectedPrompt?.outcomeProof ?
+													`\nProof: ${selectedPrompt.outcomeProof}`
+												:	""}
+											</Text>
+										</View>
+									</View>
+								)}
 
 								<View style={styles.section}>
 									<Text style={styles.sectionTitle}>Description</Text>
@@ -612,6 +692,45 @@ const styles = StyleSheet.create({
 	statsContainer: {
 		paddingHorizontal: 18,
 		marginBottom: 12,
+	},
+	sponsoredSection: {
+		paddingHorizontal: 16,
+		marginBottom: 12,
+	},
+	sponsoredTitle: {
+		fontSize: 14,
+		color: "#1E293B",
+		fontFamily: "Inter-SemiBold",
+		marginBottom: 8,
+	},
+	sponsoredContent: {
+		paddingRight: 10,
+	},
+	sponsoredCard: {
+		width: 210,
+		backgroundColor: "#FFFFFF",
+		borderRadius: 12,
+		padding: 10,
+		marginRight: 10,
+		borderWidth: 1,
+		borderColor: "#E2E8F0",
+	},
+	sponsoredCardTitle: {
+		fontSize: 13,
+		color: "#0F172A",
+		fontFamily: "Inter-SemiBold",
+	},
+	sponsoredCardMeta: {
+		fontSize: 12,
+		color: "#64748B",
+		fontFamily: "Inter-Regular",
+		marginTop: 4,
+	},
+	sponsoredOutcome: {
+		fontSize: 12,
+		color: "#166534",
+		fontFamily: "Inter-Medium",
+		marginTop: 6,
 	},
 	statItem: {
 		flexDirection: "row",

@@ -19,4 +19,13 @@ export interface Prompt {
     outputImage: string[];
     outputText: string;
     isActivate: boolean;
+    runCount?: number;
+    consistencyScore?: number;
+    hallucinationScore?: number;
+    niche?: string;
+    outcomeTitle?: string;
+    outcomeMetric?: string;
+    outcomeValue?: number;
+    outcomeProof?: string;
+    badges?: string[];
 }
