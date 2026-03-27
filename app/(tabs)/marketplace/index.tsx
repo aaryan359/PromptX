@@ -3,48 +3,84 @@ import CustomHeader from "@/components/CustomHeader";
 import FilterModal from "@/components/FilterModal";
 import PromptCard from "@/components/PromptCard";
 import { Prompt } from "@/interfaces/Prompt";
-import { useAppSelector } from "@/redux/hook";
-import { RootState } from "@/redux/store";
+import * as Clipboard from "expo-clipboard";
 import { LinearGradient } from "expo-linear-gradient";
-import { Check, Filter, Search, TrendingUp } from "lucide-react-native";
-import React, { useEffect, useRef, useState } from "react";
+import * as SecureStore from "expo-secure-store";
+import { Bookmark, BookmarkCheck, Check, Filter, Search, Star, TrendingUp } from "lucide-react-native";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
-import RazorpayCheckout from "react-native-razorpay";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
 const categories = ["All", "Writing", "Coding", "Productivity", "Education", "Design", "Marketing", "Fun", "Other"];
 
-export default function MarketplaceScreen() {
-	const user = useAppSelector((state: RootState) => state.user);
+const LIKED_PROMPTS_KEY = "marketplace_liked_prompts";
+const DISLIKED_PROMPTS_KEY = "marketplace_disliked_prompts";
+const WISHLIST_PROMPTS_KEY = "marketplace_wishlist_prompts";
 
+type ReactionFilter = "all" | "liked" | "disliked";
+type SaveFilter = "all" | "saved" | "unsaved";
+
+const toNumberSet = (rawValue: string | null): Set<number> => {
+	if (!rawValue) return new Set<number>();
+	try {
+		const parsed = JSON.parse(rawValue);
+		if (!Array.isArray(parsed)) return new Set<number>();
+		return new Set(parsed.map((item) => Number(item)).filter((item) => !Number.isNaN(item)));
+	} catch {
+		return new Set<number>();
+	}
+};
+
+export default function MarketplaceScreen() {
 	const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [selectedCategory, setSelectedCategory] = useState("All");
 	const [selectedPrompt, setSelectedPrompt] = useState<Prompt | null>(null);
 	const [showPromptModal, setShowPromptModal] = useState(false);
-	const [likedPrompts, setLikedPrompts] = useState<Set<number>>(new Set());
 	const [prompts, setPrompts] = useState<Prompt[]>([]);
 	const [loading, setLoading] = useState(false);
 	const [showFilterModal, setShowFilterModal] = useState(false);
-	const [isBuying, setIsBuying] = useState(false);
-	const [paymentDone, setPaymentDone] = useState(false);
-	const [copied, setCopied] = useState(false);
+	const [copiedSection, setCopiedSection] = useState<"user" | "system" | null>(null);
 
+	const [likedPrompts, setLikedPrompts] = useState<Set<number>>(new Set());
+	const [dislikedPrompts, setDislikedPrompts] = useState<Set<number>>(new Set());
+	const [wishlistedPrompts, setWishlistedPrompts] = useState<Set<number>>(new Set());
 
 	const [currentFilters, setCurrentFilters] = useState({
 		sortBy: "newest",
 		price: "all",
 		rating: "all",
 		category: "All",
+		reaction: "all" as ReactionFilter,
+		saveState: "all" as SaveFilter,
 	});
+
+	const persistPromptState = async (key: string, values: Set<number>) => {
+		await SecureStore.setItemAsync(key, JSON.stringify(Array.from(values)));
+	};
+
+	useEffect(() => {
+		const loadLocalMarketplaceState = async () => {
+			const [likedRaw, dislikedRaw, wishlistRaw] = await Promise.all([
+				SecureStore.getItemAsync(LIKED_PROMPTS_KEY),
+				SecureStore.getItemAsync(DISLIKED_PROMPTS_KEY),
+				SecureStore.getItemAsync(WISHLIST_PROMPTS_KEY),
+			]);
+
+			setLikedPrompts(toNumberSet(likedRaw));
+			setDislikedPrompts(toNumberSet(dislikedRaw));
+			setWishlistedPrompts(toNumberSet(wishlistRaw));
+		};
+
+		loadLocalMarketplaceState();
+	}, []);
 
 	const fetchPrompts = async () => {
 		setLoading(true);
 		try {
-			console.log(" search qury in fronted function", searchQuery);
 			const response = await MarketPlaceService.getPromptByQuery(selectedCategory, searchQuery.trim());
-			setPrompts(response.data);
+			setPrompts(response?.data || []);
 		} catch (error: any) {
 			if (error?.response?.status === 429) {
 				Toast.show({
@@ -65,17 +101,13 @@ export default function MarketplaceScreen() {
 	};
 
 	useEffect(() => {
-		if (debounceTimeout.current) {
-			clearTimeout(debounceTimeout.current);
-		}
+		if (debounceTimeout.current) clearTimeout(debounceTimeout.current);
 		debounceTimeout.current = setTimeout(() => {
 			fetchPrompts();
-		}, 500) as unknown as NodeJS.Timeout;
+		}, 450) as unknown as NodeJS.Timeout;
 
 		return () => {
-			if (debounceTimeout.current) {
-				clearTimeout(debounceTimeout.current);
-			}
+			if (debounceTimeout.current) clearTimeout(debounceTimeout.current);
 		};
 	}, [selectedCategory, searchQuery]);
 
@@ -84,94 +116,126 @@ export default function MarketplaceScreen() {
 		setShowPromptModal(true);
 	};
 
-	const handleLike = (promptId: number) => {
-		setLikedPrompts((prev) => {
-			const newSet = new Set(prev);
-			if (newSet.has(promptId)) {
-				newSet.delete(promptId);
-			} else {
-				newSet.add(promptId);
-			}
-			return newSet;
+	const handleLike = async (promptId: number) => {
+		let nextLiked = new Set<number>();
+		let nextDisliked = new Set<number>();
+
+		setLikedPrompts((previousLiked) => {
+			nextLiked = new Set(previousLiked);
+			if (nextLiked.has(promptId)) nextLiked.delete(promptId);
+			else nextLiked.add(promptId);
+			return nextLiked;
 		});
+
+		setDislikedPrompts((previousDisliked) => {
+			nextDisliked = new Set(previousDisliked);
+			nextDisliked.delete(promptId);
+			return nextDisliked;
+		});
+
+		await Promise.all([persistPromptState(LIKED_PROMPTS_KEY, nextLiked), persistPromptState(DISLIKED_PROMPTS_KEY, nextDisliked)]);
 	};
 
-	const handleCopyUPI = async () => {
-		setCopied(true);
-		setTimeout(() => setCopied(false), 1200);
+	const handleDislike = async (promptId: number) => {
+		let nextLiked = new Set<number>();
+		let nextDisliked = new Set<number>();
+
+		setDislikedPrompts((previousDisliked) => {
+			nextDisliked = new Set(previousDisliked);
+			if (nextDisliked.has(promptId)) nextDisliked.delete(promptId);
+			else nextDisliked.add(promptId);
+			return nextDisliked;
+		});
+
+		setLikedPrompts((previousLiked) => {
+			nextLiked = new Set(previousLiked);
+			nextLiked.delete(promptId);
+			return nextLiked;
+		});
+
+		await Promise.all([persistPromptState(LIKED_PROMPTS_KEY, nextLiked), persistPromptState(DISLIKED_PROMPTS_KEY, nextDisliked)]);
 	};
 
-	const handleUsePrompt = () => {
+	const handleToggleWishlist = async (promptId: number) => {
+		let nextWishlist = new Set<number>();
+		setWishlistedPrompts((previousWishlist) => {
+			nextWishlist = new Set(previousWishlist);
+			if (nextWishlist.has(promptId)) nextWishlist.delete(promptId);
+			else nextWishlist.add(promptId);
+			return nextWishlist;
+		});
+		await persistPromptState(WISHLIST_PROMPTS_KEY, nextWishlist);
+	};
+
+	const handleCopyPromptText = async (text: string, section: "user" | "system") => {
+		const trimmedText = text?.trim();
+		if (!trimmedText) return;
+
+		await Clipboard.setStringAsync(trimmedText);
+		setCopiedSection(section);
+		setTimeout(() => setCopiedSection(null), 1200);
+
 		Toast.show({
 			type: "success",
-			text1: "Prompt saved",
-			text2: "Prompt Saved Successfully",
+			text1: "Copied",
+			text2: `${section === "user" ? "User" : "System"} prompt copied`,
 		});
-		setShowPromptModal(false);
 	};
 
-	const handlePurchasePrompt = async (price: any) => {
+	const handleSavePrompt = () => {
 		if (!selectedPrompt) return;
-
-		
-		setCopied(false);
-
-		let options = {
-			description: "Prompt Purchase",
-			image: "https://i.imgur.com/3g7nmJC.jpg",
-			currency: "INR",
-			key: process.env.EXPO_PUBLIC_RAZORPAY_ID || "",
-			amount: price * 100,
-			name: "PromptX",
-			order_id: "",
-			prefill: {
-				email: user.email || "",
-				name: user.name || "",
-			},
-			theme: { color: "#53a20e" },
-		};
-
-		RazorpayCheckout.open(options)
-			.then((data: any) => {
-				// alert(`Success: ${data.razorpay_payment_id}`);
-				Toast.show({
-					type: "success",
-					text1: "Payment Successfull",
-					text2: "you can use prompt now!",
-				});
-			})
-			.catch((error: any) => {
-				// alert(`Error: ${error.code} | ${error.description}`);
-				Toast.show({
-					type: "error",
-					text1: "Payment Failed",
-					text2: "Failed to purchase Prompt",
-				});
-			});
-
-		try {
-			setIsBuying(true);
-			const response = await MarketPlaceService.purchasePrompt(selectedPrompt.id);
-
-			if (response.success) {
-				
-				// Update the prompt's purchase status
-				setPrompts((prev) =>
-					prev.map((prompt) => (prompt.id === selectedPrompt.id ? { ...prompt, isActivate: true } : prompt))
-				);
-
-				// Close modals after delay
-				setIsBuying(false);
-			}
-		} catch (error) {
-			Toast.show({
-				type: "error",
-				text1: "Purchase Failed",
-				text2: "There was an error processing your purchase",
-			});
-			setIsBuying(false);
-		}
+		handleToggleWishlist(selectedPrompt.id);
+		Toast.show({
+			type: "success",
+			text1: "Updated",
+			text2: wishlistedPrompts.has(selectedPrompt.id) ? "Removed from watchlist" : "Added to watchlist",
+		});
 	};
+
+	const filteredPrompts = useMemo(() => {
+		let next = [...prompts];
+
+		if (currentFilters.price === "free") {
+			next = next.filter((prompt) => Number(prompt.price) === 0);
+		} else if (currentFilters.price === "paid") {
+			next = next.filter((prompt) => Number(prompt.price) > 0);
+		}
+
+		if (currentFilters.rating !== "all") {
+			const threshold = Number(currentFilters.rating.replace("+", ""));
+			next = next.filter((prompt) => Number(prompt.rating) >= threshold);
+		}
+
+		if (currentFilters.reaction === "liked") {
+			next = next.filter((prompt) => likedPrompts.has(prompt.id));
+		} else if (currentFilters.reaction === "disliked") {
+			next = next.filter((prompt) => dislikedPrompts.has(prompt.id));
+		}
+
+		if (currentFilters.saveState === "saved") {
+			next = next.filter((prompt) => wishlistedPrompts.has(prompt.id));
+		} else if (currentFilters.saveState === "unsaved") {
+			next = next.filter((prompt) => !wishlistedPrompts.has(prompt.id));
+		}
+
+		if (currentFilters.sortBy === "highestRated") {
+			next.sort((first, second) => Number(second.rating) - Number(first.rating));
+		} else if (currentFilters.sortBy === "mostLiked") {
+			next.sort((first, second) => Number(second.likesCount) - Number(first.likesCount));
+		} else if (currentFilters.sortBy === "oldest") {
+			next.sort((first, second) => first.id - second.id);
+		} else {
+			next.sort((first, second) => second.id - first.id);
+		}
+
+		if (currentFilters.price === "lowToHigh") {
+			next.sort((first, second) => Number(first.price) - Number(second.price));
+		} else if (currentFilters.price === "highToLow") {
+			next.sort((first, second) => Number(second.price) - Number(first.price));
+		}
+
+		return next;
+	}, [prompts, currentFilters, likedPrompts, dislikedPrompts, wishlistedPrompts]);
 
 	return (
 		<LinearGradient
@@ -234,46 +298,54 @@ export default function MarketplaceScreen() {
 							size={16}
 							color='#10B981'
 						/>
-						<Text style={styles.statText}>{prompts.length} prompts found</Text>
+						<Text style={styles.statText}>{filteredPrompts.length} prompts found</Text>
 					</View>
 				</View>
 
-				{loading ? (
+				{loading ?
 					<View style={styles.loaderContainer}>
 						<ActivityIndicator
 							size='large'
 							color='#6941C6'
 						/>
 					</View>
-				) : (
-					<ScrollView
+				:	<ScrollView
 						style={styles.promptsList}
 						contentContainerStyle={styles.promptsContent}>
-						{prompts.map((prompt) => (
+						{filteredPrompts.map((prompt) => (
 							<PromptCard
 								key={prompt.id}
 								id={prompt.id}
 								title={prompt.title}
 								description={prompt.description}
 								category={prompt.category}
-								price={prompt.price}
+								price={0}
 								rating={prompt.rating}
 								likes={prompt.likesCount + (likedPrompts.has(prompt.id) ? 1 : 0)}
+								dislikes={dislikedPrompts.has(prompt.id) ? 1 : 0}
 								author={prompt.author.name}
-								isPurched={prompt.isActivate}
+								isPurched={wishlistedPrompts.has(prompt.id)}
+								reaction={
+									likedPrompts.has(prompt.id) ? "like"
+									: dislikedPrompts.has(prompt.id) ?
+										"dislike"
+									:	null
+								}
+								isWishlisted={wishlistedPrompts.has(prompt.id)}
 								onPress={() => handlePromptPress(prompt)}
 								onLike={() => handleLike(prompt.id)}
+								onDislike={() => handleDislike(prompt.id)}
+								onToggleWishlist={() => handleToggleWishlist(prompt.id)}
 							/>
 						))}
-						{prompts.length === 0 && (
+						{filteredPrompts.length === 0 && (
 							<View style={styles.emptyState}>
 								<Text style={styles.emptyStateText}>No prompts found.</Text>
 							</View>
 						)}
 					</ScrollView>
-				)}
+				}
 
-				{/* Prompt Detail Modal */}
 				<Modal
 					visible={showPromptModal}
 					transparent
@@ -285,17 +357,43 @@ export default function MarketplaceScreen() {
 
 							<ScrollView style={styles.modalScroll}>
 								<Text style={styles.modalTitle}>{selectedPrompt?.title}</Text>
-								<View style={[{ flex: 1, flexDirection: "row", gap: 5 }, styles.section]}>
-									<View style={[styles.modalCategory]}>
+
+								<View style={styles.modalTagRow}>
+									<View style={styles.modalCategory}>
 										<Text style={styles.modelCategoryText}>
 											{selectedPrompt?.category}
 										</Text>
 									</View>
-
 									<View style={styles.modalCategory}>
 										<Text style={styles.modelCategoryText}>
-											{selectedPrompt?.modelUsed}
+											{selectedPrompt?.modelUsed || "AI"}
 										</Text>
+									</View>
+								</View>
+
+								<View style={styles.metaGrid}>
+									<View style={styles.metaItem}>
+										<Text style={styles.metaLabel}>Author</Text>
+										<Text style={styles.metaValue}>
+											{selectedPrompt?.author?.name || "Unknown"}
+										</Text>
+									</View>
+									<View style={styles.metaItem}>
+										<Text style={styles.metaLabel}>Rating</Text>
+										<View style={styles.metaRatingRow}>
+											<Star
+												size={14}
+												color='#F59E0B'
+												fill='#F59E0B'
+											/>
+											<Text style={styles.metaValue}>
+												{Number(selectedPrompt?.rating || 0).toFixed(1)}
+											</Text>
+										</View>
+									</View>
+									<View style={styles.metaItem}>
+										<Text style={styles.metaLabel}>Price</Text>
+										<Text style={styles.metaValue}>Free</Text>
 									</View>
 								</View>
 
@@ -305,41 +403,38 @@ export default function MarketplaceScreen() {
 										<Text style={styles.menuText}>{selectedPrompt?.description}</Text>
 									</View>
 								</View>
-								{selectedPrompt?.outputText && (
+
+								{Boolean(selectedPrompt?.outputText?.trim()) && (
 									<View style={styles.section}>
 										<Text style={styles.sectionTitle}>Text Output</Text>
 										<View style={styles.menuItem}>
 											<Text style={styles.menuText}>
-												{selectedPrompt.outputText}
+												{selectedPrompt?.outputText}
 											</Text>
 										</View>
 									</View>
 								)}
 
-								{selectedPrompt?.outputImage?.length && selectedPrompt?.outputImage?.length > 0 && (
-									<View style={styles.section}>
-										<Text style={styles.sectionTitle}>Image Output</Text>
-										<ScrollView
-											horizontal
-											showsHorizontalScrollIndicator={false}
-											style={styles.imageContainer}>
-											<View style={styles.imageContainer}>
-												{selectedPrompt?.outputImage.map(
-													(imageUrl, index) => (
-														<Image
-															key={`image-${index}`}
-															source={{ uri: imageUrl }}
-															style={styles.outputImage}
-															resizeMode='contain'
-														/>
-													)
-												)}
-											</View>
-										</ScrollView>
-									</View>
-								)}
+								{Array.isArray(selectedPrompt?.outputImage) &&
+									selectedPrompt.outputImage.length > 0 && (
+										<View style={styles.section}>
+											<Text style={styles.sectionTitle}>Image Output</Text>
+											<ScrollView
+												horizontal
+												showsHorizontalScrollIndicator={false}>
+												{selectedPrompt.outputImage.map((imageUrl, index) => (
+													<Image
+														key={`image-${index}`}
+														source={{ uri: imageUrl }}
+														style={styles.outputImage}
+														resizeMode='cover'
+													/>
+												))}
+											</ScrollView>
+										</View>
+									)}
 
-								{selectedPrompt?.isActivate && selectedPrompt.userPrompt.trim() && (
+								{Boolean(selectedPrompt?.userPrompt?.trim()) && (
 									<View style={styles.section}>
 										<Text style={styles.sectionTitle}>User Prompt</Text>
 										<View style={styles.menuItem}>
@@ -347,38 +442,45 @@ export default function MarketplaceScreen() {
 												{selectedPrompt?.userPrompt}
 											</Text>
 											<TouchableOpacity
-												onPress={handleCopyUPI}
-												style={styles.qrCopyButton}>
-												{copied ? (
+												onPress={() =>
+													handleCopyPromptText(
+														selectedPrompt?.userPrompt || "",
+														"user",
+													)
+												}
+												style={styles.copyButton}>
+												{copiedSection === "user" ?
 													<Check
-														size={18}
+														size={16}
 														color='#22C55E'
 													/>
-												) : (
-													<Text style={styles.qrCopyText}>Copy</Text>
-												)}
+												:	<Text style={styles.copyButtonText}>Copy</Text>}
 											</TouchableOpacity>
 										</View>
 									</View>
 								)}
-								{selectedPrompt?.isActivate && selectedPrompt.systemPrompt.trim() && (
+
+								{Boolean(selectedPrompt?.systemPrompt?.trim()) && (
 									<View style={styles.section}>
 										<Text style={styles.sectionTitle}>System Prompt</Text>
 										<View style={styles.menuItem}>
 											<Text style={styles.menuText}>
-												{selectedPrompt.systemPrompt}
+												{selectedPrompt?.systemPrompt}
 											</Text>
 											<TouchableOpacity
-												onPress={handleCopyUPI}
-												style={styles.qrCopyButton}>
-												{copied ? (
+												onPress={() =>
+													handleCopyPromptText(
+														selectedPrompt?.systemPrompt || "",
+														"system",
+													)
+												}
+												style={styles.copyButton}>
+												{copiedSection === "system" ?
 													<Check
-														size={18}
+														size={16}
 														color='#22C55E'
 													/>
-												) : (
-													<Text style={styles.qrCopyText}>Copy</Text>
-												)}
+												:	<Text style={styles.copyButtonText}>Copy</Text>}
 											</TouchableOpacity>
 										</View>
 									</View>
@@ -388,35 +490,37 @@ export default function MarketplaceScreen() {
 							<View style={styles.modalActions}>
 								<TouchableOpacity
 									onPress={() => setShowPromptModal(false)}
-									style={styles.cancelButton}
-									disabled={isBuying}>
-									<Text style={styles.cancelButtonText}>Cancel</Text>
+									style={styles.cancelButton}>
+									<Text style={styles.cancelButtonText}>Close</Text>
 								</TouchableOpacity>
-
-								{selectedPrompt?.price === 0 || selectedPrompt?.isActivate ? (
-									<TouchableOpacity
-										onPress={handleUsePrompt}
-										style={styles.useButton}>
-										<LinearGradient
-											colors={["#10B981", "#059669"]}
-											style={styles.useGradient}>
-											<Text style={styles.useButtonText}>Save Prompt</Text>
-										</LinearGradient>
-									</TouchableOpacity>
-								) : (
-									<TouchableOpacity
-										onPress={() => handlePurchasePrompt(selectedPrompt?.price)}
-										style={styles.purchaseButton}
-										disabled={isBuying}>
-										<LinearGradient
-											colors={["#8B5CF6", "#7C3AED"]}
-											style={styles.purchaseGradient}>
-											<Text style={styles.purchaseButtonText}>
-												Buy ${selectedPrompt?.price}
+								<TouchableOpacity
+									onPress={handleSavePrompt}
+									style={styles.useButton}>
+									<LinearGradient
+										colors={["#4F46E5", "#4338CA"]}
+										style={styles.useGradient}>
+										<View style={styles.saveButtonInner}>
+											{selectedPrompt && wishlistedPrompts.has(selectedPrompt.id) ?
+												<BookmarkCheck
+													size={16}
+													color='#FFFFFF'
+												/>
+											:	<Bookmark
+													size={16}
+													color='#FFFFFF'
+												/>
+											}
+											<Text style={styles.useButtonText}>
+												{(
+													selectedPrompt &&
+													wishlistedPrompts.has(selectedPrompt.id)
+												) ?
+													"Added"
+												:	"Add to Watchlist"}
 											</Text>
-										</LinearGradient>
-									</TouchableOpacity>
-								)}
+										</View>
+									</LinearGradient>
+								</TouchableOpacity>
 							</View>
 						</View>
 					</View>
@@ -427,6 +531,7 @@ export default function MarketplaceScreen() {
 					onClose={() => setShowFilterModal(false)}
 					onApply={(filters: any) => {
 						setCurrentFilters(filters);
+						if (filters?.category && filters.category !== selectedCategory) setSelectedCategory(filters.category);
 						setShowFilterModal(false);
 					}}
 					currentFilters={currentFilters}
@@ -445,39 +550,20 @@ const styles = StyleSheet.create({
 		flex: 1,
 		backgroundColor: "#F8FAFC",
 	},
-	header: {
-		backgroundColor: "#F8FAFC",
-		alignItems: "flex-start",
-		paddingHorizontal: 10,
-	},
-	subtitle: {
-		color: "#64748B",
-		fontSize: 14,
-		fontFamily: "Inter-Regular",
-		marginRight: 10,
-	},
 	searchContainer: {
 		flexDirection: "row",
-		paddingHorizontal: 15,
+		paddingHorizontal: 16,
 		marginBottom: 10,
-		marginTop: 5,
-		gap: 5,
-	},
-	modalHandle: {
-		width: 40,
-		height: 5,
-		backgroundColor: "#E2E8F0",
-		borderRadius: 3,
-		alignSelf: "center",
-		marginTop: 5,
+		marginTop: 4,
+		gap: 8,
 	},
 	searchBox: {
 		flex: 1,
 		flexDirection: "row",
 		alignItems: "center",
 		backgroundColor: "#FFFFFF",
-		borderRadius: 12,
-		paddingHorizontal: 16,
+		borderRadius: 14,
+		paddingHorizontal: 14,
 		borderWidth: 1,
 		borderColor: "#E2E8F0",
 	},
@@ -486,11 +572,11 @@ const styles = StyleSheet.create({
 		color: "#1E293B",
 		fontSize: 16,
 		fontFamily: "Inter-Regular",
-		marginLeft: 12,
+		marginLeft: 10,
 	},
 	filterButton: {
 		backgroundColor: "#FFFFFF",
-		borderRadius: 12,
+		borderRadius: 14,
 		padding: 12,
 		justifyContent: "center",
 		alignItems: "center",
@@ -498,37 +584,34 @@ const styles = StyleSheet.create({
 		borderColor: "#E2E8F0",
 	},
 	categoriesContainer: {
-		maxHeight: 35,
-		paddingHorizontal: 20,
-		marginBottom: 10,
+		maxHeight: 40,
+		paddingHorizontal: 16,
+		marginBottom: 8,
 	},
 	categoriesContent: {
 		paddingRight: 20,
 	},
 	categoryButton: {
-		paddingHorizontal: 16,
+		paddingHorizontal: 14,
 		paddingVertical: 8,
-		borderRadius: 20,
+		borderRadius: 18,
 		backgroundColor: "#F1F5F9",
-		marginRight: 12,
-		borderWidth: 1,
-		borderColor: "#E2E8F0",
+		marginRight: 10,
 	},
 	selectedCategoryButton: {
-		backgroundColor: "#8B5CF6",
-		borderColor: "#7C3AED",
+		backgroundColor: "#4F46E5",
 	},
 	categoryText: {
 		color: "#475569",
-		fontSize: 14,
+		fontSize: 13,
 		fontFamily: "Inter-Medium",
 	},
 	selectedCategoryText: {
 		color: "#FFFFFF",
 	},
 	statsContainer: {
-		paddingHorizontal: 20,
-		marginBottom: 16,
+		paddingHorizontal: 18,
+		marginBottom: 12,
 	},
 	statItem: {
 		flexDirection: "row",
@@ -546,7 +629,7 @@ const styles = StyleSheet.create({
 		backgroundColor: "#F8FAFC",
 	},
 	promptsContent: {
-		paddingBottom: 100,
+		paddingBottom: 120,
 	},
 	loaderContainer: {
 		backgroundColor: "#F8FAFC",
@@ -554,7 +637,6 @@ const styles = StyleSheet.create({
 		justifyContent: "center",
 		alignItems: "center",
 	},
-
 	emptyState: {
 		alignItems: "center",
 		marginTop: 40,
@@ -564,294 +646,164 @@ const styles = StyleSheet.create({
 		fontSize: 16,
 		fontFamily: "Inter-Medium",
 	},
-
 	modalOverlay: {
 		flex: 1,
-		backgroundColor: "rgba(0, 0, 0, 0.5)",
+		backgroundColor: "rgba(0, 0, 0, 0.45)",
 		justifyContent: "flex-end",
 	},
 	modalContent: {
 		backgroundColor: "#FFFFFF",
-		borderTopLeftRadius: 20,
-		borderTopRightRadius: 20,
-		maxHeight: "85%",
-		paddingBottom: 20,
-		borderWidth: 1,
-		borderColor: "#E2E8F0",
+		borderTopLeftRadius: 22,
+		borderTopRightRadius: 22,
+		maxHeight: "88%",
+		paddingBottom: 16,
+	},
+	modalHandle: {
+		width: 44,
+		height: 5,
+		backgroundColor: "#E2E8F0",
+		borderRadius: 3,
+		alignSelf: "center",
+		marginTop: 8,
+		marginBottom: 4,
 	},
 	modalScroll: {
-		paddingHorizontal: 20,
+		paddingHorizontal: 18,
 	},
 	modalTitle: {
-		color: "#1E293B",
-		fontSize: 24,
+		color: "#0F172A",
+		fontSize: 22,
 		fontFamily: "Inter-Bold",
-		marginBottom: 5,
+		marginBottom: 10,
+	},
+	modalTagRow: {
+		flexDirection: "row",
+		flexWrap: "wrap",
+		gap: 8,
+		marginBottom: 10,
 	},
 	modalCategory: {
-		backgroundColor: "#8B5CF6",
-		borderColor: "#7C3AED",
-		maxHeight: 35,
-		width: "25%",
-		paddingVertical: 6,
-		borderRadius: 20,
-		borderWidth: 1,
+		backgroundColor: "#EEF2FF",
+		minWidth: 90,
+		paddingVertical: 7,
+		paddingHorizontal: 10,
+		borderRadius: 16,
 	},
 	modelCategoryText: {
-		color: "#FFFFFF",
-		fontSize: 14,
+		color: "#4338CA",
+		fontSize: 13,
 		fontFamily: "Inter-Medium",
 		alignSelf: "center",
 	},
-
-	modalDescription: {
-		color: "#475569",
-		fontSize: 16,
-		fontFamily: "Inter-Regular",
-		lineHeight: 24,
-		marginBottom: 5,
-	},
-	modalStats: {
+	metaGrid: {
 		flexDirection: "row",
 		justifyContent: "space-between",
+		gap: 8,
 		marginBottom: 10,
 	},
-	modalAuthor: {
-		color: "#64748B",
-		fontSize: 14,
-		fontFamily: "Inter-Regular",
-	},
-	modalRating: {
-		color: "#D97706",
-		fontSize: 14,
-		fontFamily: "Inter-Medium",
-	},
-	promptPreview: {
+	metaItem: {
+		flex: 1,
 		backgroundColor: "#F8FAFC",
-		borderRadius: 12,
-		padding: 16,
-		marginBottom: 20,
-		borderWidth: 1,
-		borderColor: "#E2E8F0",
+		borderRadius: 10,
+		paddingVertical: 10,
+		paddingHorizontal: 8,
 	},
-	previewTitle: {
+	metaLabel: {
+		color: "#64748B",
+		fontSize: 12,
+		fontFamily: "Inter-Medium",
+		marginBottom: 4,
+	},
+	metaValue: {
 		color: "#1E293B",
-		fontSize: 16,
+		fontSize: 13,
 		fontFamily: "Inter-SemiBold",
-		marginBottom: 8,
 	},
-	previewContent: {
-		color: "#475569",
-		fontSize: 14,
-		fontFamily: "Inter-Regular",
-		lineHeight: 20,
+	metaRatingRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 4,
 	},
-
 	section: {
 		marginBottom: 10,
 		borderRadius: 12,
 		padding: 10,
 		backgroundColor: "#F8FAFC",
-		borderWidth: 1,
-		borderColor: "#E2E8F0",
 	},
 	sectionTitle: {
 		color: "#1E293B",
-		fontSize: 16,
+		fontSize: 15,
 		fontFamily: "Inter-SemiBold",
 		marginBottom: 8,
 	},
 	menuItem: {
 		flexDirection: "row",
 		alignItems: "center",
-		paddingVertical: 8,
-		paddingHorizontal: 4,
-		borderRadius: 8,
-		marginBottom: 4,
+		paddingVertical: 10,
+		paddingHorizontal: 10,
+		borderRadius: 10,
 		backgroundColor: "#FFFFFF",
-		borderWidth: 1,
-		borderColor: "#E2E8F0",
 	},
 	menuText: {
 		color: "#1E293B",
-		fontSize: 15,
-		fontFamily: "Inter-Medium",
-		marginLeft: 12,
+		fontSize: 14,
+		fontFamily: "Inter-Regular",
 		flex: 1,
-	},
-	imageContainer: {
-		flexDirection: "row",
-		flexWrap: "wrap",
-		gap: 10,
+		lineHeight: 20,
 	},
 	outputImage: {
-		width: 300,
-		height: 300,
-		borderRadius: 20,
-		backgroundColor: "#f0f0f0",
+		width: 220,
+		height: 220,
+		borderRadius: 14,
+		backgroundColor: "#E2E8F0",
+		marginRight: 10,
 	},
-	paywallContainer: {
-		backgroundColor: "#F1F5F9",
+	copyButton: {
+		backgroundColor: "#E0E7FF",
 		borderRadius: 8,
-		padding: 16,
-		alignItems: "center",
+		paddingHorizontal: 10,
+		paddingVertical: 5,
+		marginLeft: 8,
 	},
-	paywallText: {
-		color: "#64748B",
-		fontSize: 14,
+	copyButtonText: {
+		color: "#4338CA",
 		fontFamily: "Inter-Medium",
-		marginBottom: 12,
-	},
-	subscribeButton: {
-		width: "100%",
-	},
-	subscribeButtonGradient: {
-		paddingVertical: 10,
-		borderRadius: 8,
-		alignItems: "center",
-	},
-	subscribeButtonText: {
-		color: "#FFFFFF",
-		fontFamily: "Inter-SemiBold",
-		fontSize: 14,
+		fontSize: 12,
 	},
 	modalActions: {
 		flexDirection: "row",
-		paddingHorizontal: 20,
-		gap: 12,
+		paddingHorizontal: 18,
+		gap: 10,
+		marginTop: 2,
 	},
 	cancelButton: {
 		flex: 1,
 		paddingVertical: 12,
 		borderRadius: 12,
-		borderWidth: 1,
-		borderColor: "#E2E8F0",
 		alignItems: "center",
-		backgroundColor: "#F1F5F9",
+		backgroundColor: "#EEF2FF",
 	},
 	cancelButtonText: {
 		color: "#1E293B",
-		fontSize: 16,
+		fontSize: 15,
 		fontFamily: "Inter-Medium",
 	},
 	useButton: {
-		flex: 1,
+		flex: 1.4,
 	},
 	useGradient: {
 		paddingVertical: 12,
 		borderRadius: 12,
 		alignItems: "center",
 	},
-	useButtonText: {
-		color: "#FFFFFF",
-		fontSize: 16,
-		fontFamily: "Inter-Medium",
-	},
-	purchaseButton: {
-		flex: 1,
-	},
-	purchaseGradient: {
-		paddingVertical: 12,
-		borderRadius: 12,
-		alignItems: "center",
-	},
-	purchaseButtonText: {
-		color: "#FFFFFF",
-		fontSize: 16,
-		fontFamily: "Inter-Medium",
-	},
-	qrModalOverlay: {
-		flex: 1,
-		backgroundColor: "rgba(0, 0, 0, 0.5)",
-		justifyContent: "flex-end",
-	},
-	qrModalContent: {
-		backgroundColor: "#FFFFFF",
-		borderTopLeftRadius: 20,
-		borderTopRightRadius: 20,
-		maxHeight: "80%",
-		paddingBottom: 10,
-		borderWidth: 1,
-		borderColor: "#E2E8F0",
-		paddingHorizontal: 20,
-		paddingVertical: 10,
-		alignItems: "center",
-	},
-	qrModalClose: {
-		position: "absolute",
-		right: 12,
-		top: 12,
-		zIndex: 2,
-		padding: 4,
-	},
-	qrModalTitle: {
-		fontSize: 20,
-		fontFamily: "Inter-Bold",
-		color: "#1E293B",
-		marginBottom: 16,
-		marginTop: 4,
-	},
-	qrImage: {
-		width: 180,
-		height: 180,
-		marginBottom: 18,
-		borderRadius: 12,
-		backgroundColor: "#F1F5F9",
-	},
-	qrModalSubtitle: {
-		fontSize: 15,
-		color: "#6366F1",
-		fontFamily: "Inter-SemiBold",
-		marginBottom: 4,
-	},
-
-	qrUPIRow: {
+	saveButtonInner: {
 		flexDirection: "row",
 		alignItems: "center",
-		paddingVertical: 12,
-		paddingHorizontal: 20,
-		borderRadius: 8,
-		marginBottom: 4,
-		backgroundColor: "#FFFFFF",
-		borderWidth: 1,
-		borderColor: "#E2E8F0",
+		gap: 6,
 	},
-	qrUPIText: {
-		fontSize: 15,
-		color: "#1E293B",
-		fontFamily: "Inter-Medium",
-		marginRight: 8,
-	},
-	qrCopyButton: {
-		backgroundColor: "#E0E7FF",
-		borderRadius: 8,
-		paddingHorizontal: 10,
-		paddingVertical: 4,
-		marginLeft: 4,
-	},
-	qrCopyText: {
-		color: "#6366F1",
-		fontFamily: "Inter-Medium",
-		fontSize: 13,
-	},
-	qrPaidButton: {
-		width: "100%",
-		marginTop: 10,
-	},
-	qrPaidGradient: {
-		paddingVertical: 12,
-		borderRadius: 10,
-		alignItems: "center",
-	},
-	qrPaidText: {
-		color: "#fff",
+	useButtonText: {
+		color: "#FFFFFF",
+		fontSize: 14,
 		fontFamily: "Inter-SemiBold",
-		fontSize: 16,
-	},
-	qrNote: {
-		color: "#64748B",
-		fontSize: 13,
-		fontFamily: "Inter-Regular",
-		textAlign: "center",
 	},
 });

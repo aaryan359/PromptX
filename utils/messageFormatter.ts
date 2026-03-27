@@ -32,13 +32,7 @@ export const formatLLMResponse = (rawResponse:any) => {
   formattedText = formattedText.replace(/^## (.*$)/gm, '\n$1:\n');
   formattedText = formattedText.replace(/^# (.*$)/gm, '\n$1:\n');
 
-  // Handle bold text
-  formattedText = formattedText.replace(/\*\*(.*?)\*\*/g, '$1');
-  formattedText = formattedText.replace(/__(.*?)__/g, '$1');
-
-  // Handle italic text
-  formattedText = formattedText.replace(/\*(.*?)\*/g, '$1');
-  formattedText = formattedText.replace(/_(.*?)_/g, '$1');
+  // Keep markdown emphasis markers (**bold**, *italic*) for UI renderer
 
   // Handle lists - convert to readable format
   formattedText = formattedText.replace(/^\s*[-*+]\s+(.*)$/gm, '• $1');

@@ -4,11 +4,12 @@ import CustomHeader from "@/components/CustomHeader";
 import SystemPromptButton from "@/components/SystemPromptButton";
 import { useAppSelector } from "@/redux/hook";
 import { formatLLMResponse } from "@/utils/messageFormatter";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { LinearGradient } from "expo-linear-gradient";
 import { Code, Code2, FileText, Palette, PenTool, Send, Sparkles, User } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import { KeyboardAvoidingView, Platform, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
 interface Message {
@@ -79,6 +80,8 @@ const systemPrompts = [
 ];
 export default function ChatScreen() {
 	const { isAuthenticated } = useAppSelector((state) => state.auth);
+	const tabBarHeight = useBottomTabBarHeight();
+	const insets = useSafeAreaInsets();
 	const [messages, setMessages] = useState<Message[]>([]);
 	const [inputText, setInputText] = useState("");
 	const [selectedPrompt, setSelectedPrompt] = useState(systemPrompts[4]);
@@ -89,6 +92,41 @@ export default function ChatScreen() {
 	const scrollViewRef = useRef<ScrollView>(null);
 	const systemPromptCache = useRef<{ [promptId: string]: boolean }>({});
 	const [referesh, setRefresh] = useState(false);
+
+	const extractAssistantResponse = (response: any): string => {
+		if (typeof response === "string") return response;
+		if (!response || typeof response !== "object") return "";
+
+		return (
+			response?.data?.response ||
+			response?.response ||
+			response?.data?.aiResponse ||
+			response?.aiResponse ||
+			response?.data?.chat?.aiResponse ||
+			response?.chat?.aiResponse ||
+			response?.data?.savedPrompt?.aiResponse ||
+			response?.savedPrompt?.aiResponse ||
+			""
+		);
+	};
+
+	const animateAssistantText = async (messageId: string, fullText: string) => {
+		const safeText = fullText || "I received your message. How can I help you today?";
+		if (safeText.length <= 20) {
+			setMessages((prev) => prev.map((message) => (message.id === messageId ? { ...message, content: safeText } : message)));
+			return;
+		}
+
+		let cursor = 0;
+		const step = Math.max(2, Math.min(8, Math.floor(safeText.length / 80)));
+
+		while (cursor < safeText.length) {
+			cursor = Math.min(cursor + step, safeText.length);
+			const partial = safeText.slice(0, cursor);
+			setMessages((prev) => prev.map((message) => (message.id === messageId ? { ...message, content: partial } : message)));
+			await new Promise((resolve) => setTimeout(resolve, 16));
+		}
+	};
 
 	// Load chat history on initial render
 	useEffect(() => {
@@ -160,65 +198,87 @@ export default function ChatScreen() {
 
 	const handleSendMessage = async () => {
 		if (!inputText.trim()) return;
+		const currentInput = inputText;
 
 		// Create user message
 		const userMessage: Message = {
 			id: Date.now().toString(),
-			content: inputText,
+			content: currentInput,
 			role: "user",
+			timestamp: new Date(),
+			systemPrompt: selectedPrompt.prompt,
+		};
+		const assistantMessageId = `ai-${Date.now() + 1}`;
+		const assistantPlaceholder: Message = {
+			id: assistantMessageId,
+			content: "",
+			role: "assistant",
 			timestamp: new Date(),
 			systemPrompt: selectedPrompt.prompt,
 		};
 
 		// Optimistically add user message to UI
-		setMessages((prev) => [...prev, userMessage]);
+		setMessages((prev) => [...prev, userMessage, assistantPlaceholder]);
 		setInputText("");
 		setIsLoading(true);
 
 		try {
 			// Send both the system prompt and user message to backend
-			let payload: any = { userMessage: inputText };
+			let payload: any = { userMessage: currentInput };
 			if (!systemPromptCache.current[selectedPrompt.id]) {
 				payload.systemPrompt = selectedPrompt.prompt;
 				systemPromptCache.current[selectedPrompt.id] = true; // Mark as sent/cached
 			}
+			let streamedText = "";
+			let streamWorked = false;
 
-			const response = await ChatService.sendMessage(payload);
+			try {
+				await ChatService.sendMessageStream(
+					payload,
+					(chunk) => {
+						streamWorked = true;
+						streamedText += chunk;
+						setMessages((prev) =>
+							prev.map((message) =>
+								message.id === assistantMessageId ? { ...message, content: streamedText } : message,
+							),
+						);
+					},
+					() => {
+						const formatted = formatLLMResponse(streamedText || "");
+						setMessages((prev) =>
+							prev.map((message) =>
+								message.id === assistantMessageId ?
+									{ ...message, content: formatted || streamedText }
+								:	message,
+							),
+						);
+					},
+				);
+			} catch (streamError: any) {
+				const response = await ChatService.sendMessage(payload);
+				const llmResponse = extractAssistantResponse(response);
+				let aiResponseContent = formatLLMResponse(llmResponse);
 
-			// Use the enhanced formatter to clean the response
-			let aiResponseContent = "";
-
-			if (response && typeof response === "object") {
-				const llmResponse = response?.data?.response || response?.response || "";
-				aiResponseContent = formatLLMResponse(llmResponse);
-			} else {
-				const rawResponse = typeof response === "string" ? response : "";
-				aiResponseContent = formatLLMResponse(rawResponse);
+				if (!aiResponseContent || aiResponseContent.trim().length === 0) {
+					aiResponseContent = "I received your message. How can I help you today?";
+				}
+				streamWorked = true;
+				await animateAssistantText(assistantMessageId, aiResponseContent);
 			}
 
-			// Fallback if formatter returns empty
-			if (!aiResponseContent || aiResponseContent.trim().length === 0) {
-				aiResponseContent = "I received your message. How can I help you today?";
+			if (!streamWorked && !streamedText) {
+				await animateAssistantText(assistantMessageId, "I received your message. How can I help you today?");
 			}
-
-			const aiResponse: Message = {
-				id: (Date.now() + 1).toString(),
-				content: aiResponseContent,
-				role: "assistant",
-				timestamp: new Date(),
-				systemPrompt: selectedPrompt.prompt,
-			};
-
-			setMessages((prev) => [...prev, aiResponse]);
 		} catch (error) {
 			console.error("API Error:", error);
-			const errorResponse: Message = {
-				id: (Date.now() + 1).toString(),
-				content: "Sorry, there was an error processing your request. Please try again.",
-				role: "assistant",
-				timestamp: new Date(),
-			};
-			setMessages((prev) => [...prev, errorResponse]);
+			setMessages((prev) =>
+				prev.map((message) =>
+					message.id === assistantMessageId ?
+						{ ...message, content: "Sorry, there was an error processing your request. Please try again." }
+					:	message,
+				),
+			);
 
 			Toast.show({
 				type: "error",
@@ -270,9 +330,9 @@ export default function ChatScreen() {
 			style={styles.container}>
 			<SafeAreaView style={styles.safeArea}>
 				<KeyboardAvoidingView
-					style={{ flex: 1, paddingBottom: 5 }}
+					style={{ flex: 1 }}
 					behavior={Platform.OS === "ios" ? "padding" : "height"}
-					keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 10}>
+					keyboardVerticalOffset={Platform.OS === "ios" ? insets.bottom : 0}>
 					<CustomHeader />
 
 					<View>
@@ -318,7 +378,7 @@ export default function ChatScreen() {
 					<ScrollView
 						ref={scrollViewRef}
 						style={styles.messagesContainer}
-						contentContainerStyle={styles.messagesContent}
+						contentContainerStyle={[styles.messagesContent, { paddingBottom: tabBarHeight + 16 }]}
 						onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
 						refreshControl={
 							<RefreshControl
@@ -343,7 +403,7 @@ export default function ChatScreen() {
 						)}
 					</ScrollView>
 
-					<View style={styles.inputRow}>
+					<View style={[styles.inputRow, { paddingBottom: Math.max(insets.bottom, 8) }]}>
 						<TextInput
 							style={styles.textInput}
 							value={inputText}
@@ -413,10 +473,12 @@ const styles = StyleSheet.create({
 		marginLeft: 4,
 	},
 	messagesContainer: {
-		paddingHorizontal: 15,
+		flex: 1,
+		paddingHorizontal: 10,
 	},
 	messagesContent: {
 		paddingBottom: 10,
+		paddingHorizontal: 2,
 	},
 	loadingContainer: {
 		alignItems: "center",

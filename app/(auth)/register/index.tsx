@@ -4,7 +4,7 @@ import { googleLogin } from "@/utils/GoogleSiginIn";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Alert, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
@@ -18,6 +18,7 @@ export default function AuthScreen() {
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [name, setName] = useState("");
+	const [showPassword, setShowPassword] = useState(false);
 
 	const handleGoogleSignIn = async () => {
 		try {
@@ -82,7 +83,8 @@ export default function AuthScreen() {
 				});
 				router.replace("/(tabs)");
 			} else {
-				const message = (response.payload as any)?.message || "Registration failed";
+				const payload = response.payload as any;
+				const message = typeof payload === "string" ? payload : payload?.message || "Registration failed";
 				Toast.show({
 					type: "error",
 					text1: "Registration Failed",
@@ -93,7 +95,11 @@ export default function AuthScreen() {
 
 			setLoading(false);
 		} catch (error: any) {
-			Alert.alert("Error", error.message);
+			Toast.show({
+				type: "error",
+				text1: "Registration Failed",
+				text2: error?.message || "Unable to complete registration",
+			});
 		} finally {
 			setLoading(false);
 		}
@@ -102,12 +108,12 @@ export default function AuthScreen() {
 	return (
 		<SafeAreaView style={styles.safeArea}>
 			<ScrollView contentContainerStyle={styles.container}>
-				<View style={styles.header}>
-					<Text style={styles.title}>Welcome to PromptX</Text>
-					<Text style={styles.subtitle}>Your AI prompt marketplace</Text>
-				</View>
+				<View style={styles.authCard}>
+					<View style={styles.header}>
+						<Text style={styles.title}>Create account</Text>
+						<Text style={styles.subtitle}>Join PromptX and start building with AI</Text>
+					</View>
 
-				<View style={styles.form}>
 					<View style={styles.form}>
 						<View style={styles.inputContainer}>
 							<Ionicons
@@ -157,53 +163,60 @@ export default function AuthScreen() {
 								placeholderTextColor='#94A3B8'
 								value={password}
 								onChangeText={setPassword}
-								secureTextEntry
+								secureTextEntry={!showPassword}
 							/>
+							<TouchableOpacity onPress={() => setShowPassword((prev) => !prev)}>
+								<Ionicons
+									name={showPassword ? "eye-off-outline" : "eye-outline"}
+									size={20}
+									color='#64748B'
+								/>
+							</TouchableOpacity>
 						</View>
-
-						<TouchableOpacity style={styles.forgotPassword}>
-							<Text style={styles.forgotPasswordText}>Forgot password?</Text>
-						</TouchableOpacity>
 
 						<TouchableOpacity
 							style={styles.primaryButton}
 							onPress={HandleRegisterWithEmail}
 							disabled={loading}>
-							<Text style={styles.primaryButtonText}>{loading ? "Signing in..." : "Sign In"}</Text>
-						</TouchableOpacity>
-					</View>
-
-					<View style={styles.dividerContainer}>
-						<View style={styles.dividerLine} />
-						<Text style={styles.dividerText}>OR</Text>
-						<View style={styles.dividerLine} />
-					</View>
-					<TouchableOpacity
-						style={styles.socialButton}
-						onPress={handleGoogleSignIn}
-						disabled={loading}>
-						<Image
-							source={require("../../../assets/images/googleicon.png")}
-							style={styles.socialIcon}
-						/>
-						<Text style={styles.socialButtonText}>{loading ? "Signing in..." : "Continue with Google"}</Text>
-					</TouchableOpacity>
-				</View>
-				<View>
-					<Text style={styles.termsText}>
-						If you already have an account, then Login
-						<TouchableOpacity onPress={() => router.push("/(auth)/login")}>
-							<Text
-								style={{
-									color: "#6366F1",
-									marginLeft: 4,
-									fontWeight: "bold",
-									fontSize: 14,
-								}}>
-								Login
+							<Text style={styles.primaryButtonText}>
+								{loading ? "Creating account..." : "Create account"}
 							</Text>
 						</TouchableOpacity>
-					</Text>
+
+						<View style={styles.dividerContainer}>
+							<View style={styles.dividerLine} />
+							<Text style={styles.dividerText}>OR</Text>
+							<View style={styles.dividerLine} />
+						</View>
+						<TouchableOpacity
+							style={styles.socialButton}
+							onPress={handleGoogleSignIn}
+							disabled={loading}>
+							<Image
+								source={require("../../../assets/images/googleicon.png")}
+								style={styles.socialIcon}
+							/>
+							<Text style={styles.socialButtonText}>
+								{loading ? "Signing in..." : "Continue with Google"}
+							</Text>
+						</TouchableOpacity>
+					</View>
+					<View>
+						<Text style={styles.termsText}>
+							If you already have an account, then Login
+							<TouchableOpacity onPress={() => router.push("/(auth)/login")}>
+								<Text
+									style={{
+										color: "#6366F1",
+										marginLeft: 4,
+										fontWeight: "bold",
+										fontSize: 14,
+									}}>
+									Login
+								</Text>
+							</TouchableOpacity>
+						</Text>
+					</View>
 				</View>
 			</ScrollView>
 		</SafeAreaView>
@@ -213,7 +226,7 @@ export default function AuthScreen() {
 const styles = StyleSheet.create({
 	safeArea: {
 		flex: 1,
-		backgroundColor: "#FFFFFF",
+		backgroundColor: "#F8FAFC",
 	},
 	container: {
 		flexGrow: 1,
@@ -221,21 +234,29 @@ const styles = StyleSheet.create({
 		paddingBottom: 40,
 		justifyContent: "center",
 	},
+	authCard: {
+		backgroundColor: "#FFFFFF",
+		borderWidth: 1,
+		borderColor: "#E2E8F0",
+		borderRadius: 16,
+		padding: 18,
+	},
 	header: {
-		marginBottom: 32,
+		marginBottom: 20,
 		alignItems: "center",
 	},
 	title: {
-		fontSize: 28,
+		fontSize: 26,
 		fontWeight: "bold",
 		color: "#1E293B",
 		fontFamily: "Inter-Bold",
-		marginBottom: 8,
+		marginBottom: 6,
 	},
 	subtitle: {
-		fontSize: 16,
+		fontSize: 14,
 		color: "#64748B",
 		fontFamily: "Inter-Regular",
+		textAlign: "center",
 	},
 	form: {
 		width: "100%",
@@ -308,6 +329,7 @@ const styles = StyleSheet.create({
 		fontFamily: "Inter-Regular",
 		fontSize: 12,
 		textAlign: "center",
+		marginTop: 14,
 	},
 
 	inputContainer: {
@@ -329,15 +351,6 @@ const styles = StyleSheet.create({
 		color: "#1E293B",
 		fontFamily: "Inter-Medium",
 		fontSize: 16,
-	},
-	forgotPassword: {
-		alignSelf: "flex-end",
-		marginBottom: 14,
-	},
-	forgotPasswordText: {
-		color: "#6366F1",
-		fontFamily: "Inter-Medium",
-		fontSize: 14,
 	},
 	primaryButton: {
 		backgroundColor: "#6366F1",

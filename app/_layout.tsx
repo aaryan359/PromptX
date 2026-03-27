@@ -43,19 +43,16 @@ function AppContent() {
 		}
 	}, [fontsLoaded, fontError]);
 
-	// Show loading screen while fonts are loading
-	if (!fontsLoaded && !fontError) {
-		return null;
-	}
-
 	console.log("Rendering navigation - isAuthenticated:", isAuthenticated);
 
 	return (
 		<View style={{ flex: 1 }}>
-			<Stack screenOptions={{ headerShown: false }}>
-				{isAuthenticated ?
-					<Stack.Screen name='(tabs)' />
-				:	<Stack.Screen name='(auth)' />}
+			<Stack
+				key={isAuthenticated ? "authed" : "guest"}
+				initialRouteName={isAuthenticated ? "(tabs)" : "(auth)"}
+				screenOptions={{ headerShown: false }}>
+				<Stack.Screen name='(auth)' />
+				<Stack.Screen name='(tabs)' />
 			</Stack>
 			<Toast
 				config={toastConfig}

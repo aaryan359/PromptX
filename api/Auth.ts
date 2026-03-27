@@ -1,11 +1,33 @@
 import apiClient from "@/configs/client";
 
+const postWithFallback = async (paths: string[], payload: Record<string, any>) => {
+    let lastError: any = null;
+
+    for (const path of paths) {
+        try {
+            const response = await apiClient.post(path, payload);
+            return response.data;
+        } catch (error: any) {
+            lastError = error;
+            if (error?.response?.status !== 404) {
+                throw error;
+            }
+        }
+    }
+
+    throw lastError;
+};
+
 export const AuthService = {
     async register(data: any) {
-           
+    try {
             const response = await apiClient.post("/api/v1/users/register", data);
             console.log(" response from backend is ", response.data)
             return response.data;
+    } catch (error: any) {
+        const backendMessage = error?.response?.data?.message;
+        throw new Error(backendMessage || error?.message || "Registration failed");
+    }
     },
 
     async login(data: any) {
@@ -13,15 +35,7 @@ export const AuthService = {
             const response = await apiClient.post("/api/v1/users/login", data);
             return response.data;
         } catch (error: any) {
-            const statusCode = error?.response?.status;
             const backendMessage = error?.response?.data?.message;
-
-            if (statusCode === 404) {
-                throw new Error(
-                    "Backend login route is missing. Add POST /api/v1/users/login in backend routes/userRoutes.js",
-                );
-            }
-
             throw new Error(backendMessage || error?.message || "Login failed");
         }
     },
@@ -32,14 +46,41 @@ export const AuthService = {
     },
 
 
-    forgotPassword: async (email: string) => {
+    requestResetOtp: async (email: string) => {
         try {
-            const response = await apiClient.post("/api/v1/users/forgot-password", { email });
-            return response;
+            return await postWithFallback(
+                [
+                    "/api/v1/users/forgot-password/request-otp",
+                    "/api/v1/users/forgot-password",
+                ],
+                { email },
+            );
         } catch (error: any) {
-            console.error("Forgot Password Error:", error);
-            throw error.response?.data || error;
+            const backendMessage = error?.response?.data?.message;
+            throw new Error(backendMessage || error?.message || "Failed to request OTP");
         }
+    },
+
+    resetPasswordWithOtp: async (email: string, otp: string, newPassword: string) => {
+        try {
+            return await postWithFallback(
+                [
+                    "/api/v1/users/forgot-password/reset",
+                ],
+                {
+                    email,
+                    otp,
+                    newPassword,
+                },
+            );
+        } catch (error: any) {
+            const backendMessage = error?.response?.data?.message;
+            throw new Error(backendMessage || error?.message || "Failed to reset password");
+        }
+    },
+
+    forgotPassword: async (email: string) => {
+        return AuthService.requestResetOtp(email);
     },
     checkAuthentication: async () => {
             const response = await apiClient.get("/api/v1/check");

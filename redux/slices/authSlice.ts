@@ -31,17 +31,18 @@ export const login = createAsyncThunk(
     try {
       const response = await AuthService.login(credentials);
       const payload = response?.data ?? response;
+      const authData = payload?.data ?? payload;
 
-      if (!payload?.token) {
+      if (!authData?.token) {
         return rejectWithValue(payload?.message || 'Login failed');
       }
 
-      await storeToken(payload.token);
-      if (payload?.user) {
-        dispatch(setUser(payload.user));
+      await storeToken(authData.token);
+      if (authData?.user) {
+        dispatch(setUser(authData.user));
       }
 
-      return { token: payload.token, user: payload.user };
+      return { token: authData.token, user: authData.user };
     } catch (error: any) {
       return rejectWithValue(error?.message || error?.response?.data?.message || 'Login failed');
     }
@@ -59,29 +60,26 @@ export const register = createAsyncThunk(
     try {
       const response = await AuthService.register(userData);
       const payload = response?.data ?? response;
+      const authData = payload?.data ?? payload;
       console.log('Registration response: in authslice', payload);
 
-      if (!payload?.token) {
+      if (!authData?.token) {
         return rejectWithValue(payload?.message || 'Registration failed');
       }
 
-      await storeToken(payload.token);
-      console.log('User token stored', payload.token);
+      await storeToken(authData.token);
+      console.log('User token stored', authData.token);
 
       // Set user data after successful signup
-      if (payload?.newUser) {
-        console.log('New user data:', payload.newUser);
-        dispatch(setUser(payload.newUser));
+      if (authData?.newUser || authData?.user) {
+        const newUser = authData?.newUser || authData?.user;
+        console.log('New user data:', newUser);
+        dispatch(setUser(newUser));
       }
-      return payload;
+      return authData;
 
     } catch (error: any) {
-      Toast.show({
-        type: 'error',
-        text1: 'Registration Failed',
-        text2: error.response?.data?.message,
-      });
-      return rejectWithValue(error?.response?.data?.message || error?.message || 'Registration failed');
+      return rejectWithValue(error?.message || error?.response?.data?.message || 'Registration failed');
     }
   }
 );
@@ -98,15 +96,16 @@ export const googleOauth = createAsyncThunk(
     try {
       const response = await AuthService.googleLogin(idToken, user);
       const payload = response?.data ?? response;
+      const authData = payload?.data ?? payload;
       console.log("response data",payload)
 
-      if (!payload?.token) {
+      if (!authData?.token) {
         return rejectWithValue(payload?.message || 'Google Sign In Failed');
       }
 
-      await storeToken(payload.token);
-      dispatch(setUser(payload.user));
-      return { token: payload.token, user: payload.user };
+      await storeToken(authData.token);
+      dispatch(setUser(authData.user));
+      return { token: authData.token, user: authData.user };
     } catch (error: any) {
       Toast.show({
         type: 'error',

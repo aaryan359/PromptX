@@ -7,7 +7,7 @@ import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useState } from "react";
 
-import { Alert, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
@@ -22,6 +22,7 @@ export default function AuthScreen() {
 	const [loading, setLoading] = useState(false);
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
+	const [showPassword, setShowPassword] = useState(false);
 
 	const handleGoogleSignIn = async () => {
 		try {
@@ -63,7 +64,11 @@ export default function AuthScreen() {
 			setLoading(true);
 
 			if (!email || !password) {
-				Alert.alert("Error", "Please enter both email and password");
+				Toast.show({
+					type: "error",
+					text1: "Missing fields",
+					text2: "Please enter both email and password",
+				});
 				return;
 			}
 
@@ -80,35 +85,39 @@ export default function AuthScreen() {
 			}
 
 			const message = (result.payload as any) || "Failed to sign in. Please check your credentials.";
-			if (typeof message === "string" && message.includes("Backend login route is missing")) {
-				Alert.alert(
-					"Email login unavailable",
-					"This backend currently supports Register and Google login only. Please use Google login or register first.",
-				);
-				return;
-			}
-			Alert.alert("Error", message);
+			Toast.show({
+				type: "error",
+				text1: "Login failed",
+				text2: String(message),
+			});
 		} catch (error: any) {
 			console.error("Email Sign-In Error:", error);
-			if (error.errors && error.errors.length > 0) {
-				Alert.alert("Error", error.errors[0].message);
-			} else {
-				Alert.alert("Error", "Failed to sign in. Please check your credentials.");
-			}
+			Toast.show({
+				type: "error",
+				text1: "Login failed",
+				text2: error?.message || "Failed to sign in. Please check your credentials.",
+			});
 		} finally {
 			setLoading(false);
 		}
 	};
 
+	const handleForgotPassword = () => {
+		router.push({
+			pathname: "/(auth)/reset-password",
+			params: email ? { email } : undefined,
+		});
+	};
+
 	return (
 		<SafeAreaView style={styles.safeArea}>
 			<ScrollView contentContainerStyle={styles.container}>
-				<View style={styles.header}>
-					<Text style={styles.title}>PromptX</Text>
-					<Text style={styles.subtitle}>Your AI prompt marketplace</Text>
-				</View>
+				<View style={styles.authCard}>
+					<View style={styles.header}>
+						<Text style={styles.title}>Welcome back</Text>
+						<Text style={styles.subtitle}>Login to continue with PromptX</Text>
+					</View>
 
-				<View style={styles.form}>
 					<View style={styles.form}>
 						<View style={styles.inputContainer}>
 							<Ionicons
@@ -141,11 +150,21 @@ export default function AuthScreen() {
 								placeholderTextColor='#94A3B8'
 								value={password}
 								onChangeText={setPassword}
-								secureTextEntry
+								secureTextEntry={!showPassword}
 							/>
+							<TouchableOpacity onPress={() => setShowPassword((prev) => !prev)}>
+								<Ionicons
+									name={showPassword ? "eye-off-outline" : "eye-outline"}
+									size={20}
+									color='#64748B'
+								/>
+							</TouchableOpacity>
 						</View>
 
-						<TouchableOpacity style={styles.forgotPassword}>
+						<TouchableOpacity
+							style={styles.forgotPassword}
+							onPress={handleForgotPassword}
+							disabled={loading}>
 							<Text style={styles.forgotPasswordText}>Forgot password?</Text>
 						</TouchableOpacity>
 
@@ -155,27 +174,28 @@ export default function AuthScreen() {
 							disabled={loading}>
 							<Text style={styles.primaryButtonText}>{loading ? "Logging in..." : "Login"}</Text>
 						</TouchableOpacity>
-					</View>
 
-					<View style={styles.dividerContainer}>
-						<View style={styles.dividerLine} />
-						<Text style={styles.dividerText}>OR</Text>
-						<View style={styles.dividerLine} />
-					</View>
+						<View style={styles.dividerContainer}>
+							<View style={styles.dividerLine} />
+							<Text style={styles.dividerText}>OR</Text>
+							<View style={styles.dividerLine} />
+						</View>
 
-					<TouchableOpacity
-						style={styles.socialButton}
-						onPress={handleGoogleSignIn} // Try this first
-						disabled={loading}>
-						<Image
-							source={require("../../../assets/images/googleicon.png")}
-							style={styles.socialIcon}
-						/>
-						<Text style={styles.socialButtonText}>{loading ? "Logging in..." : "Continue with Google"}</Text>
-					</TouchableOpacity>
+						<TouchableOpacity
+							style={styles.socialButton}
+							onPress={handleGoogleSignIn} // Try this first
+							disabled={loading}>
+							<Image
+								source={require("../../../assets/images/googleicon.png")}
+								style={styles.socialIcon}
+							/>
+							<Text style={styles.socialButtonText}>
+								{loading ? "Logging in..." : "Continue with Google"}
+							</Text>
+						</TouchableOpacity>
 
-					{/* Alternative button for web flow - uncomment if needed */}
-					{/* 
+						{/* Alternative button for web flow - uncomment if needed */}
+						{/* 
 					<TouchableOpacity
 						style={[styles.socialButton, { marginTop: 10 }]}
 						onPress={handleGoogleSignInWeb}
@@ -190,23 +210,24 @@ export default function AuthScreen() {
 						</Text>
 					</TouchableOpacity>
 					*/}
-				</View>
+					</View>
 
-				<View>
-					<Text style={styles.termsText}>
-						If you are a new user then Register first
-						<TouchableOpacity onPress={() => router.push("/(auth)/register")}>
-							<Text
-								style={{
-									color: "#6366F1",
-									marginLeft: 4,
-									fontWeight: "bold",
-									fontSize: 14,
-								}}>
-								Register
-							</Text>
-						</TouchableOpacity>
-					</Text>
+					<View>
+						<Text style={styles.termsText}>
+							If you are a new user then Register first
+							<TouchableOpacity onPress={() => router.push("/(auth)/register")}>
+								<Text
+									style={{
+										color: "#6366F1",
+										marginLeft: 4,
+										fontWeight: "bold",
+										fontSize: 14,
+									}}>
+									Register
+								</Text>
+							</TouchableOpacity>
+						</Text>
+					</View>
 				</View>
 			</ScrollView>
 		</SafeAreaView>
@@ -216,7 +237,7 @@ export default function AuthScreen() {
 const styles = StyleSheet.create({
 	safeArea: {
 		flex: 1,
-		backgroundColor: "#FFFFFF",
+		backgroundColor: "#F8FAFC",
 	},
 	container: {
 		flexGrow: 1,
@@ -224,21 +245,29 @@ const styles = StyleSheet.create({
 		paddingBottom: 40,
 		justifyContent: "center",
 	},
+	authCard: {
+		backgroundColor: "#FFFFFF",
+		borderWidth: 1,
+		borderColor: "#E2E8F0",
+		borderRadius: 16,
+		padding: 18,
+	},
 	header: {
-		marginBottom: 32,
+		marginBottom: 20,
 		alignItems: "center",
 	},
 	title: {
-		fontSize: 28,
+		fontSize: 26,
 		fontWeight: "bold",
 		color: "#1E293B",
 		fontFamily: "Inter-Bold",
-		marginBottom: 8,
+		marginBottom: 6,
 	},
 	subtitle: {
-		fontSize: 16,
+		fontSize: 14,
 		color: "#64748B",
 		fontFamily: "Inter-Regular",
+		textAlign: "center",
 	},
 	form: {
 		width: "100%",
@@ -311,7 +340,7 @@ const styles = StyleSheet.create({
 		fontFamily: "Inter-Regular",
 		fontSize: 12,
 		textAlign: "center",
-		marginTop: 8,
+		marginTop: 14,
 	},
 
 	inputContainer: {

@@ -18,7 +18,6 @@ export const MarketPlaceService = {
     },
 
     async getPromptByQuery(category: string, searchQuery: string) {
-        console.log(" search qury is",searchQuery)
         const response = await apiClient.get('/api/v1/marketplace/get-prompt', {
             params: { category, search: searchQuery }
         });
