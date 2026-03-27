@@ -1,19 +1,15 @@
 import CustomHeader from "@/components/CustomHeader";
-import { useAppSelector } from "@/redux/hook";
-import { RootState } from "@/redux/store";
 import { LinearGradient } from "expo-linear-gradient";
 import { Check, Crown, Star, Zap } from "lucide-react-native";
 import React, { useState } from "react";
-import { Modal } from "react-native";
-
-import { Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Dimensions, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
 const { width, height } = Dimensions.get("window");
-const CARD_WIDTH = Math.min(width * 0.8, 350); // Max width of 350 for larger screens
-const CARD_MARGIN = width * 0.02;
-
+const CENTER_CARD_WIDTH = Math.min(width * 0.78, 350);
+const SIDE_CARD_WIDTH = Math.min(width * 0.68, 300);
+const CARD_GAP = 12;
 
 const pricingPlans = [
 	{
@@ -79,8 +75,6 @@ const pricingPlans = [
 ];
 
 export default function PricingScreen() {
-
-	const user = useAppSelector((state: RootState) => state.user);
 	const [showPaymentModal, setShowPaymentModal] = useState(false);
 	const [selectedPlan, setSelectedPlan] = useState<any>(null);
 
@@ -99,39 +93,39 @@ export default function PricingScreen() {
 		}
 	};
 
-	const GetSubscription = (selectedPlan:any) => {
-    //    let options = {
-	// 		description: "Prompt Purchase",
-	// 		image: "https://i.imgur.com/3g7nmJC.jpg",
-	// 		currency: "INR",
-	// 		key: process.env.EXPO_PUBLIC_RAZORPAY_ID || "",
-	// 		amount: selectedPlan.price*100,
-	// 		name: "PromptX",
-	// 		order_id: "",
-	// 		prefill: {
-	// 			email: user.email || "",
-	// 			name: user.name || "",
-	// 		},
-	// 		theme: { color: "#53a20e" },
-	// 	};
+	const GetSubscription = (selectedPlan: any) => {
+		//    let options = {
+		// 		description: "Prompt Purchase",
+		// 		image: "https://i.imgur.com/3g7nmJC.jpg",
+		// 		currency: "INR",
+		// 		key: process.env.EXPO_PUBLIC_RAZORPAY_ID || "",
+		// 		amount: selectedPlan.price*100,
+		// 		name: "PromptX",
+		// 		order_id: "",
+		// 		prefill: {
+		// 			email: user.email || "",
+		// 			name: user.name || "",
+		// 		},
+		// 		theme: { color: "#53a20e" },
+		// 	};
 
-	// 	RazorpayCheckout.open(options)
-	// 		.then((data: any) => {
-	// 			// alert(`Success: ${data.razorpay_payment_id}`);
-	// 			Toast.show({
-	// 				type: "success",
-	// 				text1: "Payment Successfull",
-	// 				text2: "you can use prompt now!",
-	// 			});
-	// 		})
-	// 		.catch((error: any) => {
-	// 			// alert(`Error: ${error.code} | ${error.description}`);
-	// 			Toast.show({
-	// 				type: "error",
-	// 				text1: "Payment Failed",
-	// 				text2: "Failed to purchase Prompt",
-	// 			});
-	// 		});
+		// 	RazorpayCheckout.open(options)
+		// 		.then((data: any) => {
+		// 			// alert(`Success: ${data.razorpay_payment_id}`);
+		// 			Toast.show({
+		// 				type: "success",
+		// 				text1: "Payment Successfull",
+		// 				text2: "you can use prompt now!",
+		// 			});
+		// 		})
+		// 		.catch((error: any) => {
+		// 			// alert(`Error: ${error.code} | ${error.description}`);
+		// 			Toast.show({
+		// 				type: "error",
+		// 				text1: "Payment Failed",
+		// 				text2: "Failed to purchase Prompt",
+		// 			});
+		// 		});
 
 		setShowPaymentModal(false);
 		Toast.show({
@@ -145,12 +139,16 @@ export default function PricingScreen() {
 		<LinearGradient
 			colors={["#F5F7FF", "#E8ECFF"]}
 			style={styles.container}>
-				<CustomHeader />
+			<CustomHeader />
 			<SafeAreaView style={styles.safeArea}>
-				
 				<ScrollView contentContainerStyle={styles.scrollContent}>
-					<ScrollView style={styles.PriceScrollContainer}>
-						<View style={styles.columnContainer}>
+					<ScrollView
+						horizontal
+						showsHorizontalScrollIndicator={false}
+						contentContainerStyle={styles.pricingRowContainer}
+						snapToAlignment='center'
+						decelerationRate='fast'>
+						<View style={styles.pricingRow}>
 							{pricingPlans.map((plan, index) => (
 								<View
 									key={plan.id}
@@ -158,10 +156,12 @@ export default function PricingScreen() {
 										styles.planCard,
 										index === 1 && styles.highlightedCard, // Highlight the middle card
 										{
-											width: CARD_WIDTH,
-											marginBottom: CARD_MARGIN * 2,
-											alignSelf: "center",
-											transform: [{ scale: index === 1 ? 1.05 : 1 }], // Slightly scale up the middle card
+											width: index === 1 ? CENTER_CARD_WIDTH : SIDE_CARD_WIDTH,
+											marginRight: index !== pricingPlans.length - 1 ? CARD_GAP : 0,
+											transform: [
+												{ translateY: index === 1 ? -16 : -4 },
+												{ scale: index === 1 ? 1.03 : 0.94 },
+											],
 										},
 									]}>
 									{plan.popular && (
@@ -209,9 +209,9 @@ export default function PricingScreen() {
 											style={styles.selectButton}>
 											<LinearGradient
 												colors={
-													(plan.id === "free"
-														? ["#E5E7EB", "#D1D5DB"]
-														: plan.gradient) as [string, string]
+													(plan.id === "free" ?
+														["#E5E7EB", "#D1D5DB"]
+													:	plan.gradient) as [string, string]
 												}
 												style={styles.selectGradient}
 												start={{ x: 0, y: 0 }}
@@ -320,7 +320,9 @@ export default function PricingScreen() {
 									paddingVertical: 12,
 									alignItems: "center",
 								}}
-								onPress={()=>{GetSubscription(selectedPlan)}}>
+								onPress={() => {
+									GetSubscription(selectedPlan);
+								}}>
 								<Text style={{ color: "#fff", fontWeight: "bold", fontSize: 16 }}>
 									Get SubScription
 								</Text>
@@ -336,24 +338,25 @@ export default function PricingScreen() {
 const styles = StyleSheet.create({
 	container: {
 		flex: 1,
-		paddingTop:28,
+		paddingTop: 28,
 		backgroundColor: "#F5F7FF",
 	},
 	safeArea: {
 		flex: 1,
 		flexDirection: "row",
-		
 	},
 	scrollContent: {
 		paddingBottom: height * 0.05,
 	},
-	carouselContainer: {},
-	columnContainer: {
-		alignItems: "center",
-		gap: 10,
+	pricingRowContainer: {
+		paddingHorizontal: 14,
+		paddingTop: 24,
+		paddingBottom: 8,
 	},
-
-	PriceScrollContainer: {},
+	pricingRow: {
+		flexDirection: "row",
+		alignItems: "flex-end",
+	},
 	modalHandle: {
 		width: 40,
 		height: 5,
@@ -363,7 +366,7 @@ const styles = StyleSheet.create({
 		marginTop: 5,
 		marginBottom: 5,
 	},
-	
+
 	title: {
 		color: "#1E293B",
 		fontSize: Math.max(width * 0.07, 24),
@@ -390,16 +393,17 @@ const styles = StyleSheet.create({
 		shadowOffset: { width: 0, height: height * 0.012 },
 		shadowOpacity: 0.1,
 		shadowRadius: width * 0.05,
-		elevation: 5,
+		elevation: 4,
 		borderWidth: 1,
 		borderColor: "#E2E8F0",
 	},
 	highlightedCard: {
 		shadowColor: "#8B5CF6",
-		shadowOffset: { width: 0, height: height * 0.018 },
-		shadowOpacity: 0.2,
-		shadowRadius: width * 0.06,
-		elevation: 10,
+		shadowOffset: { width: 0, height: height * 0.02 },
+		shadowOpacity: 0.28,
+		shadowRadius: width * 0.07,
+		elevation: 11,
+		borderColor: "#C4B5FD",
 	},
 	popularBadge: {
 		position: "absolute",

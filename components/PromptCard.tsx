@@ -25,40 +25,58 @@ export default function PromptCard({
 	title,
 	description,
 	category,
+	price,
 	rating,
 	likes,
 	dislikes,
 	author,
-	onPress,
-	onLike,
-	onDislike,
 	isPurched,
 	reaction,
 	isWishlisted,
+	onPress,
+	onLike,
+	onDislike,
 	onToggleWishlist,
 }: PromptCardProps) {
 	return (
 		<TouchableOpacity
 			onPress={onPress}
-			style={styles.container}>
+			style={styles.container}
+			activeOpacity={0.9}>
 			<View style={styles.header}>
-				<View style={styles.categoryBadge}>
-					<Text style={styles.categoryText}>{category}</Text>
+				<View style={styles.headerLeft}>
+					<View style={styles.categoryBadge}>
+						<Text style={styles.categoryText}>{category}</Text>
+					</View>
+					<View style={styles.pricePill}>
+						<Text style={styles.priceText}>{price > 0 ? `₹${price}` : "Free"}</Text>
+					</View>
 				</View>
-				<TouchableOpacity
-					onPress={onToggleWishlist}
-					style={styles.wishlistButton}>
-					{isWishlisted ?
-						<BookmarkCheck
-							size={17}
-							color='#4F46E5'
+
+				<View style={styles.headerRight}>
+					<View style={styles.ratingSection}>
+						<Star
+							size={14}
+							color='#F59E0B'
+							fill='#F59E0B'
 						/>
-					:	<Bookmark
-							size={17}
-							color='#64748B'
-						/>
-					}
-				</TouchableOpacity>
+						<Text style={styles.rating}>{rating.toFixed(1)}</Text>
+					</View>
+					<TouchableOpacity
+						onPress={onToggleWishlist}
+						style={styles.wishlistButton}>
+						{isWishlisted ?
+							<BookmarkCheck
+								size={17}
+								color='#4F46E5'
+							/>
+						:	<Bookmark
+								size={17}
+								color='#64748B'
+							/>
+						}
+					</TouchableOpacity>
+				</View>
 			</View>
 
 			<Text style={styles.title}>{title}</Text>
@@ -70,13 +88,10 @@ export default function PromptCard({
 
 			<View style={styles.metaRow}>
 				<Text style={styles.author}>by {author}</Text>
-				<View style={styles.ratingSection}>
-					<Star
-						size={14}
-						color='#F59E0B'
-						fill='#F59E0B'
-					/>
-					<Text style={styles.rating}>{rating.toFixed(1)}</Text>
+				<View style={[styles.statusPill, isPurched ? styles.statusSaved : styles.statusFree]}>
+					<Text style={[styles.statusText, isPurched ? styles.statusSavedText : styles.statusFreeText]}>
+						{isPurched ? "Saved" : "Free"}
+					</Text>
 				</View>
 			</View>
 
@@ -101,10 +116,6 @@ export default function PromptCard({
 					/>
 					<Text style={[styles.reactionText, reaction === "dislike" && styles.reactionTextActive]}>{dislikes}</Text>
 				</TouchableOpacity>
-
-				<View style={styles.statusPill}>
-					<Text style={styles.statusText}>{isPurched ? "Saved" : "Free"}</Text>
-				</View>
 			</View>
 		</TouchableOpacity>
 	);
@@ -113,15 +124,27 @@ export default function PromptCard({
 const styles = StyleSheet.create({
 	container: {
 		marginBottom: 14,
-		paddingBottom: 14,
-		borderBottomWidth: 1,
-		borderBottomColor: "#E2E8F0",
+		padding: 14,
+		borderRadius: 16,
+		backgroundColor: "#FFFFFF",
+		borderWidth: 1,
+		borderColor: "#E2E8F0",
 	},
 	header: {
 		flexDirection: "row",
 		justifyContent: "space-between",
 		alignItems: "center",
 		marginBottom: 10,
+	},
+	headerLeft: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 8,
+	},
+	headerRight: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 8,
 	},
 	categoryBadge: {
 		backgroundColor: "#EEF2FF",
@@ -134,6 +157,19 @@ const styles = StyleSheet.create({
 		fontSize: 12,
 		fontFamily: "Inter-Medium",
 	},
+	pricePill: {
+		backgroundColor: "#F8FAFC",
+		borderWidth: 1,
+		borderColor: "#E2E8F0",
+		paddingHorizontal: 10,
+		paddingVertical: 5,
+		borderRadius: 12,
+	},
+	priceText: {
+		color: "#334155",
+		fontSize: 12,
+		fontFamily: "Inter-SemiBold",
+	},
 	wishlistButton: {
 		width: 30,
 		height: 30,
@@ -141,6 +177,8 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		justifyContent: "center",
 		backgroundColor: "#F8FAFC",
+		borderWidth: 1,
+		borderColor: "#E2E8F0",
 	},
 	title: {
 		color: "#1E293B",
@@ -159,7 +197,7 @@ const styles = StyleSheet.create({
 		flexDirection: "row",
 		justifyContent: "space-between",
 		alignItems: "center",
-		marginBottom: 10,
+		marginBottom: 12,
 	},
 	author: {
 		color: "#64748B",
@@ -169,6 +207,10 @@ const styles = StyleSheet.create({
 	ratingSection: {
 		flexDirection: "row",
 		alignItems: "center",
+		backgroundColor: "#FFFBEB",
+		borderRadius: 12,
+		paddingHorizontal: 8,
+		paddingVertical: 4,
 	},
 	rating: {
 		color: "#B45309",
@@ -180,6 +222,9 @@ const styles = StyleSheet.create({
 		flexDirection: "row",
 		alignItems: "center",
 		gap: 8,
+		paddingTop: 10,
+		borderTopWidth: 1,
+		borderTopColor: "#EEF2F7",
 	},
 	reactionButton: {
 		flexDirection: "row",
@@ -188,6 +233,8 @@ const styles = StyleSheet.create({
 		borderRadius: 16,
 		paddingHorizontal: 10,
 		paddingVertical: 6,
+		borderWidth: 1,
+		borderColor: "#E2E8F0",
 	},
 	reactionActive: {
 		backgroundColor: "#FEE2E2",
@@ -202,15 +249,27 @@ const styles = StyleSheet.create({
 		color: "#DC2626",
 	},
 	statusPill: {
-		marginLeft: "auto",
-		backgroundColor: "#DCFCE7",
-		borderRadius: 16,
 		paddingHorizontal: 10,
 		paddingVertical: 6,
+		borderRadius: 16,
+		borderWidth: 1,
+	},
+	statusSaved: {
+		backgroundColor: "#DCFCE7",
+		borderColor: "#BBF7D0",
+	},
+	statusFree: {
+		backgroundColor: "#EEF2FF",
+		borderColor: "#C7D2FE",
 	},
 	statusText: {
-		color: "#166534",
 		fontSize: 12,
 		fontFamily: "Inter-SemiBold",
+	},
+	statusSavedText: {
+		color: "#166534",
+	},
+	statusFreeText: {
+		color: "#4338CA",
 	},
 });

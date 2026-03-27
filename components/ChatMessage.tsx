@@ -3,6 +3,7 @@ import * as Speech from "expo-speech";
 import { Copy, Volume2, VolumeX } from "lucide-react-native";
 import React, { useRef, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import Markdown from "react-native-markdown-display";
 
 interface ChatMessageProps {
 	message: string;
@@ -19,11 +20,12 @@ export default function ChatMessage({ message, isUser, timestamp }: ChatMessageP
 		if (!isUser && !isSpeaking) {
 			const cleanMessage = message
 				.replace(/```[\s\S]*?```/g, "")
+				.replace(/`([^`]+)`/g, "$1")
+				.replace(/[>#*_~-]/g, "")
 				.replace(/\n\s+/g, "\n")
 				.replace(/^\d+\.\s/gm, "")
-				.replace(/^•\s/gm, "")
+				.replace(/^[-*+]\s/gm, "")
 				.replace(/^---$/gm, "")
-				.replace(/"/g, "")
 				.trim();
 
 			setIsSpeaking(true);
@@ -61,144 +63,6 @@ export default function ChatMessage({ message, isUser, timestamp }: ChatMessageP
 		await Clipboard.setStringAsync(data);
 	};
 
-	const renderInlineStyledText = (line: string) => {
-		const parts: Array<{ text: string; style: "normal" | "bold" | "code" }> = [];
-		const regex = /(\*\*[^*]+\*\*|`[^`]+`)/g;
-		let lastIndex = 0;
-		let match: RegExpExecArray | null;
-
-		while ((match = regex.exec(line)) !== null) {
-			if (match.index > lastIndex) {
-				parts.push({ text: line.slice(lastIndex, match.index), style: "normal" });
-			}
-
-			const token = match[0];
-			if (token.startsWith("**") && token.endsWith("**")) {
-				parts.push({ text: token.slice(2, -2), style: "bold" });
-			} else if (token.startsWith("`") && token.endsWith("`")) {
-				parts.push({ text: token.slice(1, -1), style: "code" });
-			}
-
-			lastIndex = regex.lastIndex;
-		}
-
-		if (lastIndex < line.length) {
-			parts.push({ text: line.slice(lastIndex), style: "normal" });
-		}
-
-		return parts.map((part, index) => (
-			<Text
-				key={`part-${index}`}
-				style={[styles.regularText, part.style === "bold" && styles.inlineBold, part.style === "code" && styles.inlineCode]}>
-				{part.text}
-			</Text>
-		));
-	};
-
-	const renderFormattedMessage = (text: string) => {
-		const lines = text.split("\n");
-		const components = [];
-		let currentIndex = 0;
-
-		for (let index = 0; index < lines.length; index++) {
-			const line = lines[index];
-			const key = `line-${currentIndex++}`;
-
-			if (line.trim() === "") {
-				components.push(<Text key={key}>{"\n"}</Text>);
-				continue;
-			}
-
-			if (line.trim() === "---") {
-				components.push(
-					<View
-						key={key}
-						style={styles.horizontalRule}>
-						<View style={styles.ruleLine} />
-					</View>,
-				);
-				continue;
-			}
-
-			if (line.endsWith("Code:") || line.endsWith("Terminal:") || line.includes("JavaScript:") || line.includes("Python:")) {
-				components.push(
-					<Text
-						key={key}
-						style={styles.codeHeader}>
-						{line}
-					</Text>,
-				);
-				continue;
-			}
-
-			if (line.startsWith("  ") && line.trim().length > 0) {
-				components.push(
-					<View
-						key={key}
-						style={styles.codeBlockContainer}>
-						<Text style={styles.codeBlock}>{line.replace(/^  /, "")}</Text>
-					</View>,
-				);
-				continue;
-			}
-
-			if (line.endsWith(":") && !line.includes("Code:") && line.trim().length < 50) {
-				components.push(
-					<Text
-						key={key}
-						style={styles.sectionHeader}>
-						{line}
-					</Text>,
-				);
-				continue;
-			}
-
-			if (/^\d+\.\s/.test(line)) {
-				components.push(
-					<Text
-						key={key}
-						style={styles.listItem}>
-						{line}
-					</Text>,
-				);
-				continue;
-			}
-
-			if (line.startsWith("• ")) {
-				components.push(
-					<Text
-						key={key}
-						style={styles.bulletItem}>
-						{line}
-					</Text>,
-				);
-				continue;
-			}
-
-			if (line.startsWith('"') && line.endsWith('"')) {
-				components.push(
-					<Text
-						key={key}
-						style={styles.quotedText}>
-						{line}
-					</Text>,
-				);
-				continue;
-			}
-
-			components.push(
-				<Text
-					key={key}
-					style={styles.regularText}>
-					{renderInlineStyledText(line)}
-					{"\n"}
-				</Text>,
-			);
-		}
-
-		return components;
-	};
-
 	return (
 		<View style={[styles.container, isUser ? styles.userContainer : styles.aiContainer]}>
 			{isUser ?
@@ -206,7 +70,9 @@ export default function ChatMessage({ message, isUser, timestamp }: ChatMessageP
 					<Text style={styles.userMessage}>{message}</Text>
 				</View>
 			:	<View style={styles.aiBubble}>
-					<View style={styles.aiMessageContent}>{renderFormattedMessage(message)}</View>
+					<View style={styles.aiMessageContent}>
+						<Markdown style={markdownStyles}>{message}</Markdown>
+					</View>
 					<View style={styles.aiActionsRow}>
 						<TouchableOpacity
 							style={styles.actionButton}
@@ -301,89 +167,6 @@ const styles = StyleSheet.create({
 		fontFamily: "Inter-Medium",
 		lineHeight: 22,
 	},
-	regularText: {
-		color: "#1E293B",
-		fontSize: 15,
-		fontFamily: "Inter-Regular",
-		lineHeight: 23,
-	},
-	inlineBold: {
-		fontFamily: "Inter-SemiBold",
-		color: "#0F172A",
-	},
-	inlineCode: {
-		fontFamily: "Inter-Medium",
-		backgroundColor: "#EEF2FF",
-		color: "#4F46E5",
-		borderRadius: 6,
-		paddingHorizontal: 4,
-	},
-	sectionHeader: {
-		color: "#1E293B",
-		fontSize: 16,
-		fontFamily: "Inter-SemiBold",
-		lineHeight: 24,
-		marginTop: 8,
-		marginBottom: 4,
-	},
-	codeHeader: {
-		color: "#7C3AED",
-		fontSize: 14,
-		fontFamily: "Inter-Medium",
-		marginTop: 8,
-		marginBottom: 4,
-	},
-	codeBlockContainer: {
-		backgroundColor: "#F8F9FA",
-		borderRadius: 8,
-		marginVertical: 2,
-		borderLeftWidth: 3,
-		borderLeftColor: "#E2E8F0",
-	},
-	codeBlock: {
-		fontFamily: "Courier New",
-		fontSize: 13,
-		color: "#374151",
-		paddingHorizontal: 12,
-		paddingVertical: 8,
-		lineHeight: 18,
-	},
-	listItem: {
-		color: "#1E293B",
-		fontSize: 15,
-		fontFamily: "Inter-Regular",
-		lineHeight: 22,
-		marginLeft: 4,
-		marginVertical: 2,
-	},
-	bulletItem: {
-		color: "#1E293B",
-		fontSize: 15,
-		fontFamily: "Inter-Regular",
-		lineHeight: 22,
-		marginLeft: 4,
-		marginVertical: 2,
-	},
-	quotedText: {
-		color: "#6B7280",
-		fontSize: 15,
-		fontFamily: "Inter-Regular",
-		fontStyle: "italic",
-		lineHeight: 22,
-		marginVertical: 4,
-		paddingLeft: 12,
-		borderLeftWidth: 2,
-		borderLeftColor: "#D1D5DB",
-	},
-	horizontalRule: {
-		marginVertical: 12,
-		alignItems: "center",
-	},
-	ruleLine: {
-		width: "100%",
-		height: 1,
-		backgroundColor: "#E2E8F0",
-	},
 	timestamp: {
 		color: "#9CA3AF",
 		fontSize: 11,
@@ -395,5 +178,91 @@ const styles = StyleSheet.create({
 	},
 	aiTimestamp: {
 		marginLeft: 6,
+	},
+});
+
+const markdownStyles = StyleSheet.create({
+	body: {
+		color: "#1E293B",
+		fontSize: 15,
+		fontFamily: "Inter-Regular",
+		lineHeight: 23,
+		marginTop: 0,
+		marginBottom: 0,
+	},
+	paragraph: {
+		marginTop: 0,
+		marginBottom: 8,
+	},
+	strong: {
+		fontFamily: "Inter-SemiBold",
+		color: "#0F172A",
+	},
+	em: {
+		fontStyle: "italic",
+	},
+	code_inline: {
+		fontFamily: "Inter-Medium",
+		backgroundColor: "#EEF2FF",
+		color: "#4F46E5",
+		borderRadius: 6,
+		paddingHorizontal: 4,
+		paddingVertical: 1,
+	},
+	fence: {
+		fontFamily: "Courier New",
+		fontSize: 13,
+		color: "#374151",
+		lineHeight: 18,
+	},
+	code_block: {
+		backgroundColor: "#F8F9FA",
+		borderRadius: 8,
+		paddingHorizontal: 12,
+		paddingVertical: 8,
+		borderLeftWidth: 3,
+		borderLeftColor: "#E2E8F0",
+		marginVertical: 6,
+	},
+	blockquote: {
+		borderLeftWidth: 2,
+		borderLeftColor: "#D1D5DB",
+		paddingLeft: 12,
+		marginVertical: 6,
+	},
+	heading1: {
+		fontFamily: "Inter-SemiBold",
+		fontSize: 20,
+		lineHeight: 28,
+		color: "#0F172A",
+		marginTop: 2,
+		marginBottom: 8,
+	},
+	heading2: {
+		fontFamily: "Inter-SemiBold",
+		fontSize: 18,
+		lineHeight: 26,
+		color: "#0F172A",
+		marginTop: 2,
+		marginBottom: 8,
+	},
+	heading3: {
+		fontFamily: "Inter-SemiBold",
+		fontSize: 16,
+		lineHeight: 24,
+		color: "#1E293B",
+		marginTop: 2,
+		marginBottom: 6,
+	},
+	bullet_list: {
+		marginVertical: 4,
+	},
+	ordered_list: {
+		marginVertical: 4,
+	},
+	hr: {
+		backgroundColor: "#E2E8F0",
+		height: 1,
+		marginVertical: 10,
 	},
 });

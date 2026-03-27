@@ -11,9 +11,7 @@ export const MarketPlaceService = {
     },
 
     async getPromptById(id: string) {
-        const response = await apiClient.get('/api/v1/marketplace/getpromptById', {
-            params: { id }
-        });
+        const response = await apiClient.get(`/api/v1/marketplace/prompt-by-id/${id}`);
         return response.data;
     },
 
